@@ -1,0 +1,50 @@
+# ============================================================
+# SAPT Backend - .gitignore
+# ============================================================
+
+# --- Maven build output ---
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# --- Environment Variables (NEVER commit .env) ---
+.env
+
+# --- Logs ---
+logs/
+*.log
+
+# --- IDE - IntelliJ IDEA ---
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+
+# --- IDE - Eclipse ---
+.project
+.classpath
+.settings/
+bin/
+
+# --- IDE - VS Code ---
+.vscode/
+
+# --- IDE - NetBeans ---
+nbproject/private/
+nbbuild/
+dist/
+nbdist/
+.nb-gradle/
+
+# --- OS Files ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Temp Files ---
+*.tmp
+*.bak
+*.swp
+*~.nib
