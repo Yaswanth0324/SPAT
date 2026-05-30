@@ -2,7 +2,7 @@
 // SPARK localStorage utility functions - Mock Database
 // =====================================================================
 
-import { INITIAL_USERS, INITIAL_SUBMISSIONS, INITIAL_LOGS, INITIAL_COLLEGES_DATA } from './mockData';
+import { INITIAL_USERS, INITIAL_SUBMISSIONS, INITIAL_LOGS, INITIAL_COLLEGES_DATA, DEPARTMENTS } from './mockData';
 
 const KEYS = {
   USERS: 'spark_users',
@@ -16,7 +16,7 @@ const KEYS = {
 };
 
 // Bump this when seed data schema changes so localStorage is refreshed
-const CURRENT_DB_VERSION = '2';
+const CURRENT_DB_VERSION = '3';
 
 // ---- INIT ----
 export const initDB = () => {
@@ -42,10 +42,11 @@ export const initDB = () => {
     if (changed) localStorage.setItem(KEYS.USERS, JSON.stringify(users));
   }
 
-  // Re-seed submissions if DB version changed
+  // Re-seed submissions + colleges if DB version changed
   const storedVersion = localStorage.getItem(KEYS.DB_VERSION);
   if (storedVersion !== CURRENT_DB_VERSION) {
     localStorage.setItem(KEYS.SUBMISSIONS, JSON.stringify(INITIAL_SUBMISSIONS));
+    localStorage.setItem(KEYS.COLLEGES, JSON.stringify(INITIAL_COLLEGES_DATA));
     localStorage.setItem(KEYS.DB_VERSION, CURRENT_DB_VERSION);
   } else if (!localStorage.getItem(KEYS.SUBMISSIONS)) {
     localStorage.setItem(KEYS.SUBMISSIONS, JSON.stringify(INITIAL_SUBMISSIONS));
@@ -221,6 +222,39 @@ export const saveColleges = (cols) => localStorage.setItem(KEYS.COLLEGES, JSON.s
 export const addCollege = (college) => {
   const cols = getColleges();
   cols.push(college);
+  saveColleges(cols);
+};
+
+// Returns departments for a specific college name.
+// Falls back to global DEPARTMENTS list if college not found in DB.
+export const getDepartmentsByCollege = (collegeName) => {
+  const cols = getColleges();
+  const col = cols.find(c => c.name === collegeName);
+  if (col && col.departments && col.departments.length > 0) {
+    return col.departments;
+  }
+  // Fallback: return global default departments
+  return DEPARTMENTS;
+};
+
+// Adds a new department to a specific college in the DB.
+// If the college doesn't exist in DB yet, creates a lightweight entry for it.
+export const addDepartmentToCollege = (collegeName, departmentName) => {
+  const cols = getColleges();
+  const idx = cols.findIndex(c => c.name === collegeName);
+  if (idx !== -1) {
+    if (!cols[idx].departments) cols[idx].departments = [...DEPARTMENTS];
+    if (!cols[idx].departments.includes(departmentName)) {
+      cols[idx].departments.push(departmentName);
+    }
+  } else {
+    // College not in DB yet — create a lightweight record
+    cols.push({
+      id: `col_${Date.now()}`,
+      name: collegeName,
+      departments: [...DEPARTMENTS, departmentName],
+    });
+  }
   saveColleges(cols);
 };
 

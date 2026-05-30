@@ -1,18 +1,21 @@
 import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
-import { Building2, UserPlus, Users, CheckSquare, BookOpen, FileText, UploadCloud, BarChart2, User } from 'lucide-react';
+import { Building2, UserPlus, Users, CheckSquare, BookOpen, FileText, UploadCloud, BarChart2, User, LayoutDashboard } from 'lucide-react';
 import DashboardLayout from '../../layouts/DashboardLayout';
 import { useAuth } from '../../context/AuthContext';
 import { ROLES } from '../../utils/mockData';
 
 const roleLinks = {
   [ROLES.SYSTEM_ADMIN]: [
+    { to: '/dashboard/system-admin/analytics', icon: <LayoutDashboard className="w-5 h-5" />, label: 'Dashboard' },
     { to: '/dashboard/system-admin', end: true, icon: <Building2 className="w-5 h-5" />, label: 'Colleges' },
     { to: '/dashboard/system-admin/add-admin', icon: <UserPlus className="w-5 h-5" />, label: 'Add College Admin' },
   ],
   [ROLES.COLLEGE_ADMIN]: [
-    { to: '/dashboard/college-admin', end: true, icon: <BookOpen className="w-5 h-5" />, label: 'Departments' },
+    { to: '/dashboard/college-admin', end: true, icon: <LayoutDashboard className="w-5 h-5" />, label: 'Dashboard' },
+    { to: '/dashboard/college-admin/departments', icon: <BookOpen className="w-5 h-5" />, label: 'Departments' },
     { to: '/dashboard/college-admin/hod-requests', icon: <CheckSquare className="w-5 h-5" />, label: 'HOD Requests' },
+    { to: '/dashboard/college-admin/profile', icon: <User className="w-5 h-5" />, label: 'Profile' },
   ],
   [ROLES.HOD]: [
     { to: '/dashboard/hod', end: true, icon: <CheckSquare className="w-5 h-5" />, label: 'Mentor Approvals' },

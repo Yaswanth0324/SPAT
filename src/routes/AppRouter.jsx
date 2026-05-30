@@ -10,7 +10,10 @@ import RegisterPage from '../pages/Auth/RegisterPage';
 // Dashboards
 import { RoleDashboardLayout } from '../pages/Dashboards/DashboardLayoutWrapper';
 import { SystemAdminColleges, SystemAdminAddAdmin } from '../pages/Dashboards/SystemAdmin/SystemAdminPages';
+import { SystemAdminAnalyticsDashboard } from '../pages/Dashboards/SystemAdmin/SystemAdminDashboard';
 import { CollegeAdminDepartments, CollegeAdminHODRequests } from '../pages/Dashboards/CollegeAdmin/CollegeAdminPages';
+import { CollegeAdminDashboard } from '../pages/Dashboards/CollegeAdmin/CollegeAdminDashboard';
+import { CollegeAdminProfile } from '../pages/Dashboards/CollegeAdmin/CollegeAdminProfile';
 import { HODMentorApprovals, HODMentors } from '../pages/Dashboards/HOD/HODPages';
 import { MentorStudents, MentorSubmissions } from '../pages/Dashboards/Mentor/MentorPages';
 import { StudentSubmission, StudentLogs, StudentMetrics, StudentProfile } from '../pages/Dashboards/Student/StudentPages';
@@ -30,14 +33,17 @@ const AppRouter = () => (
       }>
         <Route index element={<SystemAdminColleges />} />
         <Route path="add-admin" element={<SystemAdminAddAdmin />} />
+        <Route path="analytics" element={<SystemAdminAnalyticsDashboard />} />
       </Route>
 
       {/* College Admin */}
       <Route path="/dashboard/college-admin" element={
         <ProtectedRoute allowedRoles={[ROLES.COLLEGE_ADMIN]}><RoleDashboardLayout /></ProtectedRoute>
       }>
-        <Route index element={<CollegeAdminDepartments />} />
+        <Route index element={<CollegeAdminDashboard />} />
+        <Route path="departments" element={<CollegeAdminDepartments />} />
         <Route path="hod-requests" element={<CollegeAdminHODRequests />} />
+        <Route path="profile" element={<CollegeAdminProfile />} />
       </Route>
 
       {/* HOD */}

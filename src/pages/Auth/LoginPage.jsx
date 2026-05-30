@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { GraduationCap, Eye, EyeOff, Shield, KeyRound, Mail, ArrowLeft, CheckCircle } from 'lucide-react';
+import { GraduationCap, Eye, EyeOff, Shield, KeyRound, Mail, ArrowLeft, CheckCircle, ChevronDown, PlusCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { adminLogin, login as loginUser, getUsers } from '../../utils/localStorage';
+import { adminLogin, login as loginUser, getUsers, getDepartmentsByCollege, addDepartmentToCollege } from '../../utils/localStorage';
 import { useToast } from '../../components/ui/UIComponents';
 import { ROLES, COLLEGES, DEPARTMENTS } from '../../utils/mockData';
 
@@ -201,6 +201,60 @@ const LoginPage = () => {
   const [loading, setLoading] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
 
+  // Dynamic department state
+  const [availableDepts, setAvailableDepts] = useState([]);
+  const [isOtherDept, setIsOtherDept] = useState(false);
+  const [customDept, setCustomDept] = useState('');
+  const [savingDept, setSavingDept] = useState(false);
+  const [deptSaved, setDeptSaved] = useState(false);
+
+  // Load departments whenever college changes
+  useEffect(() => {
+    if (form.college) {
+      const depts = getDepartmentsByCollege(form.college);
+      setAvailableDepts(depts);
+    } else {
+      setAvailableDepts([]);
+    }
+    // Reset department fields when college changes
+    setForm(prev => ({ ...prev, department: '' }));
+    setIsOtherDept(false);
+    setCustomDept('');
+    setDeptSaved(false);
+  }, [form.college]);
+
+  const handleDeptChange = (e) => {
+    const val = e.target.value;
+    if (val === '__OTHERS__') {
+      setIsOtherDept(true);
+      setForm(prev => ({ ...prev, department: '' }));
+      setDeptSaved(false);
+    } else {
+      setIsOtherDept(false);
+      setCustomDept('');
+      setDeptSaved(false);
+      setForm(prev => ({ ...prev, department: val }));
+    }
+  };
+
+  const handleSaveCustomDept = () => {
+    const trimmed = customDept.trim();
+    if (!trimmed) {
+      showToast('Please enter a department name.', 'error');
+      return;
+    }
+    setSavingDept(true);
+    setTimeout(() => {
+      addDepartmentToCollege(form.college, trimmed);
+      setAvailableDepts(getDepartmentsByCollege(form.college));
+      setForm(prev => ({ ...prev, department: trimmed }));
+      setIsOtherDept(false);
+      setDeptSaved(true);
+      setSavingDept(false);
+      showToast(`"${trimmed}" added to ${form.college}!`, 'success');
+    }, 400);
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     setLoading(true);
@@ -235,59 +289,131 @@ const LoginPage = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="label-field">College</label>
-              <select className="select-field" value={form.college} onChange={e => setForm({...form, college: e.target.value})} required>
-                <option value="">Select College</option>
-                {COLLEGES.map(c => <option key={c}>{c}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="label-field">Department</label>
-              <select className="select-field" value={form.department} onChange={e => setForm({...form, department: e.target.value})} required>
-                <option value="">Select Dept</option>
-                {DEPARTMENTS.map(d => <option key={d}>{d}</option>)}
-              </select>
-            </div>
-          </div>
+
+          {/* Step 1: College Selection */}
           <div>
-            <label className="label-field">Role</label>
-            <select className="select-field" value={form.role} onChange={e => setForm({...form, role: e.target.value})} required>
-              <option value="">Select Role</option>
-              <option value={ROLES.HOD}>HOD</option>
-              <option value={ROLES.MENTOR}>Mentor</option>
-              <option value={ROLES.STUDENT}>Student</option>
+            <label className="label-field">College</label>
+            <select
+              className="select-field"
+              value={form.college}
+              onChange={e => setForm({ ...form, college: e.target.value })}
+              required
+            >
+              <option value="">Select your College</option>
+              {COLLEGES.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
-          <div>
-            <label className="label-field">Email</label>
-            <input type="email" className="input-field" placeholder="your@email.edu" value={form.email} onChange={e => setForm({...form, email: e.target.value})} required />
-          </div>
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="label-field mb-0">Password</label>
-              <button
-                type="button"
-                onClick={() => setShowForgot(true)}
-                className="text-xs font-medium transition-colors"
-                style={{ color: '#ea580c' }}
-                onMouseEnter={e => e.currentTarget.style.color = '#c2410c'}
-                onMouseLeave={e => e.currentTarget.style.color = '#ea580c'}
-              >
-                Forgot Password?
+
+          {/* Step 2: Department (only shown after college is selected) */}
+          {form.college && (
+            <div
+              style={{
+                animation: 'slideDown 0.25s ease-out',
+              }}
+            >
+              <style>{`
+                @keyframes slideDown {
+                  from { opacity: 0; transform: translateY(-8px); }
+                  to { opacity: 1; transform: translateY(0); }
+                }
+              `}</style>
+              <label className="label-field">Department</label>
+
+              {!isOtherDept ? (
+                <select
+                  className="select-field"
+                  value={form.department}
+                  onChange={handleDeptChange}
+                  required
+                >
+                  <option value="">Select Department</option>
+                  {availableDepts.map(d => <option key={d} value={d}>{d}</option>)}
+                  <option value="__OTHERS__">➕ Others (Add new department)</option>
+                </select>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      className="input-field flex-1"
+                      placeholder="Enter department name..."
+                      value={customDept}
+                      onChange={e => setCustomDept(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleSaveCustomDept())}
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      onClick={handleSaveCustomDept}
+                      disabled={savingDept || !customDept.trim()}
+                      className="btn-primary px-4 py-2 text-sm whitespace-nowrap"
+                      style={{ minWidth: 'fit-content' }}
+                    >
+                      {savingDept ? '...' : 'Add'}
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { setIsOtherDept(false); setCustomDept(''); }}
+                    className="text-xs transition-colors"
+                    style={{ color: '#ea580c' }}
+                  >
+                    ← Back to department list
+                  </button>
+                </div>
+              )}
+
+              {deptSaved && form.department && (
+                <p className="text-xs mt-1.5 text-emerald-500 flex items-center gap-1">
+                  <CheckCircle className="w-3 h-3" />
+                  Department saved and selected: <span className="font-semibold">{form.department}</span>
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Step 3: Role, Email, Password (shown after department selected) */}
+          {form.department && (
+            <div className="space-y-4" style={{ animation: 'slideDown 0.25s ease-out' }}>
+              <div>
+                <label className="label-field">Role</label>
+                <select className="select-field" value={form.role} onChange={e => setForm({ ...form, role: e.target.value })} required>
+                  <option value="">Select Role</option>
+                  <option value={ROLES.HOD}>HOD</option>
+                  <option value={ROLES.MENTOR}>Mentor</option>
+                  <option value={ROLES.STUDENT}>Student</option>
+                </select>
+              </div>
+              <div>
+                <label className="label-field">Email</label>
+                <input type="email" className="input-field" placeholder="your@email.edu" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} required />
+              </div>
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="label-field mb-0">Password</label>
+                  <button
+                    type="button"
+                    onClick={() => setShowForgot(true)}
+                    className="text-xs font-medium transition-colors"
+                    style={{ color: '#ea580c' }}
+                    onMouseEnter={e => e.currentTarget.style.color = '#c2410c'}
+                    onMouseLeave={e => e.currentTarget.style.color = '#ea580c'}
+                  >
+                    Forgot Password?
+                  </button>
+                </div>
+                <div className="relative">
+                  <input type={showPass ? 'text' : 'password'} className="input-field pr-12" placeholder="••••••••" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} required />
+                  <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-3 text-slate-400 hover:text-slate-600">
+                    {showPass ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
+              </div>
+              <button type="submit" className="btn-primary w-full justify-center py-3" disabled={loading}>
+                {loading ? 'Logging in...' : 'Login'}
               </button>
             </div>
-            <div className="relative">
-              <input type={showPass ? 'text' : 'password'} className="input-field pr-12" placeholder="••••••••" value={form.password} onChange={e => setForm({...form, password: e.target.value})} required />
-              <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-3 text-slate-400 hover:text-slate-600">
-                {showPass ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-              </button>
-            </div>
-          </div>
-          <button type="submit" className="btn-primary w-full justify-center py-3" disabled={loading}>
-            {loading ? 'Logging in...' : 'Login'}
-          </button>
+          )}
         </form>
 
         <div className="mt-4 p-3 bg-primary-50 dark:bg-primary-950/30 rounded-xl text-xs text-primary-700 dark:text-primary-300 space-y-0.5">
@@ -295,6 +421,7 @@ const LoginPage = () => {
           <p>HOD: priya@mit.edu / hod123 → Role: HOD</p>
           <p>Mentor: arun@mit.edu / mentor123 → Role: Mentor</p>
           <p>Student: rahul@student.mit.edu / student123 → Role: Student</p>
+          <p className="text-primary-500 dark:text-primary-400 mt-1">College: MIT College of Engineering → Dept: Computer Science and Engineering</p>
         </div>
 
         <div className="flex items-center justify-between mt-5">
@@ -307,3 +434,4 @@ const LoginPage = () => {
 };
 
 export default LoginPage;
+

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { BookOpen, Users, CheckSquare, X, Check } from 'lucide-react';
-import { getUsers, updateUser } from '../../../utils/localStorage';
+import { getUsers, updateUser, getSubmissions, getLogs } from '../../../utils/localStorage';
 import { ROLES } from '../../../utils/mockData';
 import { useAuth } from '../../../context/AuthContext';
 import { StatCard, Modal, Badge, useToast, EmptyState, Avatar } from '../../../components/ui/UIComponents';
@@ -9,10 +9,14 @@ import { StatCard, Modal, Badge, useToast, EmptyState, Avatar } from '../../../c
 export const CollegeAdminDepartments = () => {
   const { user } = useAuth();
   const [selected, setSelected] = useState(null);
+  
   const users = getUsers().filter(u => u.college === user.college);
   const hods = users.filter(u => u.role === ROLES.HOD && u.status === 'approved');
   const mentors = users.filter(u => u.role === ROLES.MENTOR && u.status === 'approved');
   const students = users.filter(u => u.role === ROLES.STUDENT);
+
+  const allSubmissions = getSubmissions();
+  const allLogs = getLogs();
 
   // Group by department
   const deptMap = {};
@@ -20,8 +24,14 @@ export const CollegeAdminDepartments = () => {
     if (!deptMap[h.department]) deptMap[h.department] = { hod: null, mentors: 0, students: 0 };
     deptMap[h.department].hod = h;
   });
-  mentors.forEach(m => { if (deptMap[m.department]) deptMap[m.department].mentors++; });
-  students.forEach(s => { if (deptMap[s.department]) deptMap[s.department].students++; });
+  mentors.forEach(m => { 
+    if (!deptMap[m.department]) deptMap[m.department] = { hod: null, mentors: 0, students: 0 };
+    deptMap[m.department].mentors++; 
+  });
+  students.forEach(s => { 
+    if (!deptMap[s.department]) deptMap[s.department] = { hod: null, mentors: 0, students: 0 };
+    deptMap[s.department].students++; 
+  });
 
   const departments = Object.entries(deptMap);
 
@@ -31,9 +41,10 @@ export const CollegeAdminDepartments = () => {
         <h1 className="font-display text-3xl font-bold text-slate-900 dark:text-white">Departments</h1>
         <p className="text-slate-500 dark:text-slate-400 mt-1">{user.college}</p>
       </div>
-      <div className="grid sm:grid-cols-3 gap-6 mb-8">
+      
+      {/* Removed Total Users Stat Card and shifted to 2-column layout */}
+      <div className="grid sm:grid-cols-2 gap-6 mb-8">
         <StatCard icon={<BookOpen className="w-6 h-6" />} label="Departments" value={departments.length} color="primary" />
-        <StatCard icon={<Users className="w-6 h-6" />} label="Total Users" value={users.length} color="blue" />
         <StatCard icon={<CheckSquare className="w-6 h-6" />} label="Pending Approvals" value={users.filter(u => u.status === 'pending').length} color="yellow" />
       </div>
 
@@ -41,45 +52,129 @@ export const CollegeAdminDepartments = () => {
         <div className="card"><EmptyState icon={<BookOpen className="w-12 h-12" />} title="No departments yet" subtitle="Departments appear once HODs are approved" /></div>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {departments.map(([dept, info]) => (
-            <div key={dept} className="card-hover" onClick={() => setSelected({ dept, ...info })}>
-              <div className="flex items-start justify-between mb-4">
-                <div className="p-2 bg-primary-100 dark:bg-primary-900/30 rounded-xl">
-                  <BookOpen className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+          {departments.map(([dept, info]) => {
+            const deptStudents = students.filter(s => s.department === dept);
+            const deptStudentIds = new Set(deptStudents.map(s => s.id));
+            const deptSubmissions = allSubmissions.filter(sub => deptStudentIds.has(sub.studentId));
+            const deptLogs = allLogs.filter(log => deptStudentIds.has(log.studentId));
+            const totalActivities = deptSubmissions.length + deptLogs.length;
+            const approvalCount = deptSubmissions.filter(sub => sub.status === 'approved').length;
+            const rejectionCount = deptSubmissions.filter(sub => sub.status === 'rejected').length;
+
+            return (
+              <div 
+                key={dept} 
+                className="card-hover p-6 bg-white dark:bg-gray-900 rounded-2xl border border-orange-100 dark:border-orange-950/40 shadow-sm cursor-pointer hover:shadow-md transition-all duration-300 flex flex-col justify-between" 
+                onClick={() => setSelected({ 
+                  dept, 
+                  ...info,
+                  totalActivities,
+                  approvalCount,
+                  rejectionCount
+                })}
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="p-2.5 rounded-xl bg-orange-100 dark:bg-orange-950/30 text-orange-600 dark:text-orange-400">
+                      <BookOpen className="w-5 h-5" />
+                    </div>
+                    <Badge variant="green">Active</Badge>
+                  </div>
+                  
+                  <h3 className="font-extrabold text-slate-900 dark:text-white text-base mb-3 leading-snug">{dept}</h3>
+                  
+                  {/* Detailed HOD Info */}
+                  <div className="p-3 bg-slate-50/60 dark:bg-dark-900/20 rounded-xl border border-slate-100 dark:border-slate-800/40 mb-4 space-y-1">
+                    <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Department HOD</p>
+                    {info.hod ? (
+                      <>
+                        <p className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate">{info.hod.name}</p>
+                        <p className="text-xs text-slate-500 truncate">{info.hod.email}</p>
+                        <p className="text-xs text-slate-500 truncate">{info.hod.phone || 'No contact number'}</p>
+                      </>
+                    ) : (
+                      <p className="text-xs font-medium text-slate-400 italic">No HOD assigned yet</p>
+                    )}
+                  </div>
                 </div>
-                <Badge variant="green">Active</Badge>
+
+                {/* Submissions / logs activities */}
+                <div className="border-t border-slate-100 dark:border-slate-800/40 pt-4 mt-2 space-y-3">
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className="p-2 bg-orange-50/50 dark:bg-orange-950/10 rounded-lg">
+                      <p className="text-sm font-black text-orange-600 dark:text-orange-400">{totalActivities}</p>
+                      <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase mt-0.5">Activities</p>
+                    </div>
+                    <div className="p-2 bg-emerald-50/50 dark:bg-emerald-950/10 rounded-lg">
+                      <p className="text-sm font-black text-emerald-600 dark:text-emerald-400">{approvalCount}</p>
+                      <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase mt-0.5">Approved</p>
+                    </div>
+                    <div className="p-2 bg-rose-50/50 dark:bg-rose-950/10 rounded-lg">
+                      <p className="text-sm font-black text-rose-600 dark:text-rose-400">{rejectionCount}</p>
+                      <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase mt-0.5">Rejected</p>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400 font-semibold px-1">
+                    <span>{info.mentors} Mentors</span>
+                    <span>·</span>
+                    <span>{info.students} Students</span>
+                  </div>
+                </div>
               </div>
-              <h3 className="font-semibold text-slate-900 dark:text-white text-sm mb-2 leading-snug">{dept}</h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">HOD: {info.hod?.name || 'Unassigned'}</p>
-              <div className="flex gap-3 text-xs text-slate-500 dark:text-slate-400">
-                <span>{info.mentors} Mentors</span>
-                <span>·</span>
-                <span>{info.students} Students</span>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
-      <Modal isOpen={!!selected} onClose={() => setSelected(null)} title={selected?.dept || ''}>
+      {/* Expanded Modal */}
+      <Modal isOpen={!!selected} onClose={() => setSelected(null)} title={selected?.dept || 'Department Overview'}>
         {selected && (
-          <div className="space-y-4">
-            <div className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-dark-850 rounded-xl">
-              <Avatar name={selected.hod?.name} size="lg" />
-              <div>
-                <p className="font-bold text-slate-900 dark:text-white">{selected.hod?.name}</p>
-                <p className="text-sm text-slate-500">{selected.hod?.email}</p>
-                <p className="text-sm text-slate-500">{selected.hod?.phone}</p>
+          <div className="space-y-5">
+            <div className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-dark-900/10 rounded-2xl border border-slate-100 dark:border-slate-800/40">
+              <Avatar name={selected.hod?.name} src={selected.hod?.profileImage} size="lg" />
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-0.5">Department Head (HOD)</p>
+                <p className="font-bold text-slate-900 dark:text-white text-base truncate">{selected.hod?.name || 'Unassigned HOD'}</p>
+                {selected.hod ? (
+                  <>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 truncate">{selected.hod.email}</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">{selected.hod.phone || 'No phone number provided'}</p>
+                  </>
+                ) : (
+                  <p className="text-xs italic text-slate-400 dark:text-slate-500">Approvals of new HODs will enable assignment.</p>
+                )}
               </div>
             </div>
+
             <div className="grid grid-cols-2 gap-4">
-              <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
-                <p className="text-2xl font-bold text-blue-600">{selected.mentors}</p>
-                <p className="text-xs text-slate-500 mt-1">Mentors</p>
+              <div className="text-center p-4 bg-blue-50/50 dark:bg-blue-950/10 rounded-2xl border border-blue-100/50 dark:border-blue-950/30">
+                <p className="text-2xl font-black text-blue-600 dark:text-blue-400">{selected.mentors}</p>
+                <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mt-1 uppercase tracking-wider">Faculty Mentors</p>
               </div>
-              <div className="text-center p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl">
-                <p className="text-2xl font-bold text-emerald-600">{selected.students}</p>
-                <p className="text-xs text-slate-500 mt-1">Students</p>
+              <div className="text-center p-4 bg-emerald-50/50 dark:bg-emerald-950/10 rounded-2xl border border-emerald-100/50 dark:border-emerald-950/30">
+                <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{selected.students}</p>
+                <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mt-1 uppercase tracking-wider">Students Enrolled</p>
+              </div>
+            </div>
+
+            <div className="border-t border-slate-100 dark:border-slate-800/40 my-4"></div>
+
+            <div>
+              <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-3">Academic Performance & Activities</p>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="text-center p-3 bg-orange-50/60 dark:bg-orange-950/10 rounded-xl border border-orange-100/50 dark:border-orange-950/30">
+                  <p className="text-xl font-black text-orange-600 dark:text-orange-400">{selected.totalActivities}</p>
+                  <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-0.5">Total Activities</p>
+                </div>
+                <div className="text-center p-3 bg-emerald-50/60 dark:bg-emerald-950/10 rounded-xl border border-emerald-100/50 dark:border-emerald-950/30">
+                  <p className="text-xl font-black text-emerald-600 dark:text-emerald-400">{selected.approvalCount}</p>
+                  <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-0.5">Approvals</p>
+                </div>
+                <div className="text-center p-3 bg-rose-50/60 dark:bg-rose-950/10 rounded-xl border border-rose-100/50 dark:border-rose-950/30">
+                  <p className="text-xl font-black text-rose-600 dark:text-rose-400">{selected.rejectionCount}</p>
+                  <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-0.5">Rejections</p>
+                </div>
               </div>
             </div>
           </div>

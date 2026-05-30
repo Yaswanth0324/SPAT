@@ -66,7 +66,7 @@ const Sidebar = ({ links, title }) => {
           className="flex items-center gap-3 px-3 py-3 rounded-xl mb-2"
           style={{ background: isDark ? 'rgba(234,88,12,0.1)' : '#fff7ed' }}
         >
-          <Avatar name={user?.name} size="sm" />
+          <Avatar name={user?.name} src={user?.avatar} size="sm" />
           <div className="flex-1 min-w-0">
             <p className="text-xs font-semibold truncate" style={{ color: isDark ? '#fde8d0' : '#1c0f00' }}>
               {user?.name}
@@ -110,7 +110,7 @@ const Sidebar = ({ links, title }) => {
 
       {/* Sidebar - Desktop */}
       <aside
-        className="hidden md:flex flex-col w-64 min-h-screen shrink-0"
+        className="hidden md:flex flex-col w-64 h-screen sticky top-0 shrink-0"
         style={sidebarStyle}
       >
         <SidebarContent />
