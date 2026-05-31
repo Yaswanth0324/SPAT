@@ -37,13 +37,8 @@ export const HODMentorApprovals = () => {
     <div className="animate-fade-in">
       {ToastComponent}
       <div className="mb-8">
-        <h1 className="font-display text-3xl font-bold text-slate-900 dark:text-white">HOD Dashboard</h1>
+        <h1 className="font-display text-3xl font-bold text-slate-900 dark:text-white">Mentor Approvals</h1>
         <p className="text-slate-500 dark:text-slate-400 mt-1">{user.department}</p>
-      </div>
-
-      <div className="grid sm:grid-cols-2 gap-6 mb-8">
-        <StatCard icon={<Users className="w-6 h-6" />} label="Total Mentors" value={approved.length} color="primary" />
-        <StatCard icon={<Users className="w-6 h-6" />} label="Total Students" value={students.length} color="green" />
       </div>
 
       <div className="mb-8">
@@ -111,26 +106,52 @@ export const HODMentors = () => {
       {mentors.length === 0 ? (
         <div className="card"><EmptyState icon={<Users className="w-12 h-12" />} title="No mentors yet" subtitle="Approve mentor requests to see them here" /></div>
       ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {mentors.map(m => {
-            const stats = getMentorStats(m.id);
-            return (
-              <div key={m.id} className="card-hover" onClick={() => setSelected(m)}>
-                <div className="flex items-center gap-3 mb-3">
-                  <Avatar name={m.name} size="md" />
-                  <div>
-                    <p className="font-semibold text-slate-900 dark:text-white text-sm">{m.name}</p>
-                    <Badge variant="green">Active</Badge>
-                  </div>
-                </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">{m.email}</p>
-                <div className="flex gap-2 mb-2">
-                  <span className="text-xs text-slate-500">{stats.total} submissions</span>
-                </div>
-                <RateBar rate={stats.rate} />
-              </div>
-            );
-          })}
+        <div className="card overflow-x-auto p-0">
+          <table className="min-w-full text-left border-collapse">
+            <thead className="bg-orange-50/40 dark:bg-dark-900/40 text-orange-850 dark:text-orange-300 uppercase text-xs tracking-wider border-b border-orange-100 dark:border-dark-850">
+              <tr>
+                <th className="p-4 font-bold">Name</th>
+                <th className="p-4 font-bold">Department</th>
+                <th className="p-4 font-bold">Position</th>
+                <th className="p-4 font-bold">Success Percentage</th>
+                <th className="p-4 font-bold text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-orange-100/50 dark:divide-dark-850 text-sm text-slate-700 dark:text-slate-350">
+              {mentors.map(m => {
+                const stats = getMentorStats(m.id);
+                const position = m.position || (m.name.startsWith('Prof.') ? 'Professor' : m.name.startsWith('Dr.') ? 'Associate Professor' : 'Assistant Professor');
+                const rateStr = stats.rate === null ? '0%' : `${stats.rate}%`;
+                return (
+                  <tr key={m.id} className="hover:bg-orange-50/30 dark:hover:bg-orange-950/10 transition-colors">
+                    <td className="p-4 flex items-center gap-3">
+                      <Avatar name={m.name} size="sm" />
+                      <div>
+                        <p className="font-semibold text-slate-900 dark:text-white">{m.name}</p>
+                        <p className="text-xs text-slate-400">{m.email}</p>
+                      </div>
+                    </td>
+                    <td className="p-4 font-semibold">{m.department || user.department}</td>
+                    <td className="p-4 font-medium">{position}</td>
+                    <td className="p-4">
+                      <span className={`font-bold ${stats.rate >= 70 ? 'text-emerald-600' : stats.rate >= 40 ? 'text-amber-600' : 'text-rose-600'}`}>
+                        {rateStr}
+                      </span>
+                    </td>
+                    <td className="p-4 text-right">
+                      <button
+                        type="button"
+                        onClick={() => setSelected(m)}
+                        className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm hover:shadow"
+                      >
+                        View Details
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
 

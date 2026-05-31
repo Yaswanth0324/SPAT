@@ -18,8 +18,10 @@ const roleLinks = {
     { to: '/dashboard/college-admin/profile', icon: <User className="w-5 h-5" />, label: 'Profile' },
   ],
   [ROLES.HOD]: [
-    { to: '/dashboard/hod', end: true, icon: <CheckSquare className="w-5 h-5" />, label: 'Mentor Approvals' },
+    { to: '/dashboard/hod', end: true, icon: <LayoutDashboard className="w-5 h-5" />, label: 'Dashboard' },
     { to: '/dashboard/hod/mentors', icon: <Users className="w-5 h-5" />, label: 'Mentors' },
+    { to: '/dashboard/hod/approvals', icon: <CheckSquare className="w-5 h-5" />, label: 'Mentor Approvals' },
+    { to: '/dashboard/hod/profile', icon: <User className="w-5 h-5" />, label: 'Profile' },
   ],
   [ROLES.MENTOR]: [
     { to: '/dashboard/mentor', end: true, icon: <Users className="w-5 h-5" />, label: 'Students' },

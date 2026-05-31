@@ -196,22 +196,106 @@ export const CollegeAdminHODRequests = () => {
     showToast(`HOD ${action === 'approved' ? 'approved' : 'rejected'} successfully`, action === 'approved' ? 'success' : 'error');
   };
 
+  const handleSuccessionAction = (hodId, action) => {
+    const allUsers = getUsers();
+    const hodIndex = allUsers.findIndex(u => u.id === hodId);
+    
+    if (hodIndex !== -1) {
+      const hod = allUsers[hodIndex];
+      const req = hod.successionRequest;
+
+      if (action === 'approved') {
+        // Replace old HOD details in-place to avoid data loss
+        allUsers[hodIndex] = {
+          ...hod,
+          name: req.name,
+          email: req.email,
+          password: req.password,
+          phone: req.phone,
+          profileImage: null, // clear old image
+          successionRequest: null // clear succession request
+        };
+        showToast(`HOD succession approved. ${req.name} is now the Head of ${hod.department}! ✓`, 'success');
+      } else {
+        // Rejected
+        allUsers[hodIndex] = {
+          ...hod,
+          successionRequest: null
+        };
+        showToast('HOD succession request rejected.', 'error');
+      }
+
+      // Save to localStorage
+      localStorage.setItem('spark_users', JSON.stringify(allUsers));
+      
+      // Update local state to force re-render
+      setUsers(allUsers.filter(u => u.role === ROLES.HOD && u.college === user.college));
+    }
+  };
+
   const pending = users.filter(u => u.status === 'pending');
   const processed = users.filter(u => u.status !== 'pending');
+  const successionRequests = users.filter(u => u.successionRequest && u.successionRequest.status === 'pending');
 
   return (
-    <div className="animate-fade-in">
+    <div className="animate-fade-in space-y-6">
       {ToastComponent}
-      <div className="mb-8">
+      <div className="mb-6">
         <h1 className="font-display text-3xl font-bold text-slate-900 dark:text-white">HOD Requests</h1>
-        <p className="text-slate-500 dark:text-slate-400 mt-1">Review and approve HOD registrations</p>
+        <p className="text-slate-500 dark:text-slate-400 mt-1">Review and approve HOD registrations and handovers</p>
       </div>
 
-      {pending.length === 0 && <div className="card mb-6"><EmptyState icon={<CheckSquare className="w-12 h-12" />} title="No pending requests" subtitle="All HOD requests have been processed" /></div>}
+      {/* Succession Handover Section */}
+      {successionRequests.length > 0 && (
+        <div className="space-y-4 mb-8">
+          <h2 className="font-semibold text-slate-800 dark:text-white flex items-center gap-2">
+            <span className="flex h-2.5 w-2.5 rounded-full bg-orange-500 animate-pulse"></span>
+            HOD Handover & Succession Requests ({successionRequests.length})
+          </h2>
+          {successionRequests.map(h => (
+            <div key={h.id} className="card flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-l-4 border-orange-500 bg-orange-500/5">
+              <div className="flex items-center gap-3">
+                <Avatar name={h.successionRequest.name} size="md" />
+                <div>
+                  <p className="font-bold text-slate-900 dark:text-white">
+                    {h.successionRequest.name} <span className="text-xs font-normal text-slate-500">(New HOD Candidate)</span>
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    Email: {h.successionRequest.email} | Phone: {h.successionRequest.phone || 'No phone'}
+                  </p>
+                  <p className="text-[10px] text-slate-400 mt-1 uppercase tracking-wider font-bold">
+                    Replacing HOD: {h.name} | Dept: {h.department}
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-2 self-end sm:self-center">
+                <button
+                  onClick={() => handleSuccessionAction(h.id, 'approved')}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all"
+                >
+                  Approve Succession
+                </button>
+                <button
+                  onClick={() => handleSuccessionAction(h.id, 'rejected')}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition-all"
+                >
+                  Reject
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {pending.length === 0 && successionRequests.length === 0 && (
+        <div className="card mb-6">
+          <EmptyState icon={<CheckSquare className="w-12 h-12" />} title="No pending requests" subtitle="All registration and succession requests are handled." />
+        </div>
+      )}
 
       {pending.length > 0 && (
         <div className="space-y-4 mb-8">
-          <h2 className="font-semibold text-slate-800 dark:text-white">Pending ({pending.length})</h2>
+          <h2 className="font-semibold text-slate-800 dark:text-white">Pending Registrations ({pending.length})</h2>
           {pending.map(h => (
             <div key={h.id} className="card flex items-center gap-4">
               <Avatar name={h.name} size="md" />
@@ -231,13 +315,13 @@ export const CollegeAdminHODRequests = () => {
 
       {processed.length > 0 && (
         <div className="space-y-4">
-          <h2 className="font-semibold text-slate-800 dark:text-white">Processed</h2>
+          <h2 className="font-semibold text-slate-800 dark:text-white">Processed Registrations</h2>
           {processed.map(h => (
             <div key={h.id} className="card flex items-center gap-4 opacity-75">
               <Avatar name={h.name} size="md" />
               <div className="flex-1">
                 <p className="font-semibold text-slate-900 dark:text-white">{h.name}</p>
-                <p className="text-sm text-slate-500">{h.email}</p>
+                <p className="text-sm text-slate-500">{h.email} · {h.department}</p>
               </div>
               <Badge variant={h.status === 'approved' ? 'green' : 'red'}>{h.status}</Badge>
             </div>

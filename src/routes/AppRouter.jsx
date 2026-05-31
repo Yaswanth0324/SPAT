@@ -15,6 +15,8 @@ import { CollegeAdminDepartments, CollegeAdminHODRequests } from '../pages/Dashb
 import { CollegeAdminDashboard } from '../pages/Dashboards/CollegeAdmin/CollegeAdminDashboard';
 import { CollegeAdminProfile } from '../pages/Dashboards/CollegeAdmin/CollegeAdminProfile';
 import { HODMentorApprovals, HODMentors } from '../pages/Dashboards/HOD/HODPages';
+import { HODDashboard } from '../pages/Dashboards/HOD/HODDashboard';
+import { HODProfile } from '../pages/Dashboards/HOD/HODProfile';
 import { MentorStudents, MentorSubmissions } from '../pages/Dashboards/Mentor/MentorPages';
 import { StudentSubmission, StudentLogs, StudentMetrics, StudentProfile } from '../pages/Dashboards/Student/StudentPages';
 
@@ -50,8 +52,10 @@ const AppRouter = () => (
       <Route path="/dashboard/hod" element={
         <ProtectedRoute allowedRoles={[ROLES.HOD]}><RoleDashboardLayout /></ProtectedRoute>
       }>
-        <Route index element={<HODMentorApprovals />} />
+        <Route index element={<HODDashboard />} />
         <Route path="mentors" element={<HODMentors />} />
+        <Route path="approvals" element={<HODMentorApprovals />} />
+        <Route path="profile" element={<HODProfile />} />
       </Route>
 
       {/* Mentor */}
