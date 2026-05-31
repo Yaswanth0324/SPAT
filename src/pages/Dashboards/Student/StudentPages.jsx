@@ -1,7 +1,8 @@
 import { useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { UploadCloud, BookOpen, BarChart2, User, Plus, Download, FileText, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
-import { addSubmission, getSubmissionsByStudent, addLog, getLogsByStudent, getTotalCredits, updateUser, generateId } from '../../../utils/localStorage';
+import { addSubmission, getSubmissionsByStudent, addLog, getLogsByStudent, getTotalCredits, updateUser, generateId, getCustomCategories, addCustomCategory, getUsers, getSubmissions, saveSubmissions } from '../../../utils/localStorage';
 import { ACTIVITY_TYPES, ACTIVITY_CATEGORIES, CREDIT_MAP, getStars, getAchievementBadge } from '../../../utils/mockData';
 import { StatCard, Badge, useToast, EmptyState, Avatar, StarsDisplay } from '../../../components/ui/UIComponents';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
@@ -10,29 +11,86 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 export const StudentSubmission = () => {
   const { user } = useAuth();
   const { showToast, ToastComponent } = useToast();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Handle re-submission pre-population
+  const resubmit = location.state?.resubmitActivity || null;
+
   const [form, setForm] = useState({
-    type: '',
-    achievementType: '',
-    title: '',
-    date: '',
-    description: '',
-    certificate: '',
-    presentationFile: '',
-    documentFile: '',
+    type: resubmit?.type || '',
+    achievementType: resubmit?.achievementType || '',
+    title: resubmit?.title || '',
+    date: resubmit?.date || '',
+    description: resubmit?.description || '',
+    certificate: resubmit?.certificateFile || '',
+    presentationFile: resubmit?.presentationFile || '',
+    documentFile: resubmit?.documentFile || '',
+    customCategory: '',
+    customAchievementType: '',
+    customPoints: 15,
   });
+
+  const [customCats, setCustomCats] = useState(() => getCustomCategories());
   const [loading, setLoading] = useState(false);
+
+  const allCategories = { ...ACTIVITY_CATEGORIES, ...customCats };
+  const allTypes = [...ACTIVITY_TYPES, ...Object.keys(customCats).filter(t => !ACTIVITY_TYPES.includes(t))];
+
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   // Sub-types for chosen category
-  const subTypes = form.type ? (ACTIVITY_CATEGORIES[form.type] || []) : [];
+  const subTypes = form.type && form.type !== 'Other' ? (allCategories[form.type] || []) : [];
 
   // Exact points for chosen achievement type
-  const exactPoints = subTypes.find(s => s.label === form.achievementType)?.points ?? null;
+  const exactPoints = form.type === 'Other'
+    ? Number(form.customPoints)
+    : (subTypes.find(s => s.label === form.achievementType)?.points ?? null);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!form.achievementType) { showToast('Please select an achievement type', 'warning'); return; }
+
+    let finalCategory = form.type;
+    let finalAchievementType = form.achievementType;
+    let finalPoints = exactPoints;
+
+    if (form.type === 'Other') {
+      if (!form.customCategory.trim()) {
+        showToast('Please enter custom category name', 'warning');
+        return;
+      }
+      if (!form.customAchievementType.trim()) {
+        showToast('Please enter achievement type', 'warning');
+        return;
+      }
+      finalCategory = form.customCategory.trim();
+      finalAchievementType = form.customAchievementType.trim();
+      finalPoints = Number(form.customPoints) || 15;
+
+      // Add to persistent custom categories in system database
+      addCustomCategory(finalCategory, finalAchievementType, finalPoints);
+      // Reload state so it refreshes instantly
+      setCustomCats(getCustomCategories());
+    } else {
+      if (!form.achievementType) {
+        showToast('Please select an achievement type', 'warning');
+        return;
+      }
+    }
+
+    // Verify at least one document is uploaded
+    if (!form.certificate && !form.presentationFile && !form.documentFile) {
+      showToast('Please upload at least one supporting document.', 'error');
+      return;
+    }
+
     setLoading(true);
+
+    const validDocs = [];
+    if (form.certificate) validDocs.push({ name: form.certificate, type: 'certificate' });
+    if (form.presentationFile) validDocs.push({ name: form.presentationFile, type: 'presentation' });
+    if (form.documentFile) validDocs.push({ name: form.documentFile, type: 'document' });
+
     setTimeout(() => {
       addSubmission({
         id: generateId('sub'),
@@ -40,9 +98,9 @@ export const StudentSubmission = () => {
         studentName: user.name,
         mentorId: user.mentorId || '',
         title: form.title,
-        type: form.type,
-        achievementType: form.achievementType,
-        suggestedCredits: exactPoints,
+        type: finalCategory,
+        achievementType: finalAchievementType,
+        suggestedCredits: finalPoints,
         date: form.date,
         description: form.description,
         status: 'pending',
@@ -51,14 +109,35 @@ export const StudentSubmission = () => {
         fileUrl: form.certificate ? '#' : null,
         presentationUrl: form.presentationFile ? '#' : null,
         documentUrl: form.documentFile ? '#' : null,
-        certificateFile: form.certificate,
-        presentationFile: form.presentationFile,
-        documentFile: form.documentFile,
+        certificateFile: form.certificate || null,
+        presentationFile: form.presentationFile || null,
+        documentFile: form.documentFile || null,
+        allDocuments: validDocs,
         submittedAt: new Date().toISOString().split('T')[0],
       });
-      showToast('Submission uploaded! Waiting for mentor review.', 'success');
-      setForm({ type: '', achievementType: '', title: '', date: '', description: '', certificate: '', presentationFile: '', documentFile: '' });
+
+      showToast(resubmit ? 'Correction submission uploaded!' : 'Submission uploaded! Waiting for mentor review.', 'success');
+      
+      // Clear state
+      setForm({
+        type: '',
+        achievementType: '',
+        title: '',
+        date: '',
+        description: '',
+        certificate: '',
+        presentationFile: '',
+        documentFile: '',
+        customCategory: '',
+        customAchievementType: '',
+        customPoints: 15,
+      });
       setLoading(false);
+
+      // If we resubmitted, clear history state
+      if (resubmit) {
+        navigate('/dashboard/student/submission', { replace: true, state: null });
+      }
     }, 800);
   };
 
@@ -66,9 +145,21 @@ export const StudentSubmission = () => {
     <div className="animate-fade-in max-w-2xl">
       {ToastComponent}
       <div className="mb-8">
-        <h1 className="font-display text-3xl font-bold text-slate-900 dark:text-white">Upload Submission</h1>
-        <p className="text-slate-500 dark:text-slate-400 mt-1">Submit your activities for mentor review and credits</p>
+        <h1 className="font-display text-3xl font-bold text-slate-900 dark:text-white">
+          {resubmit ? 'Re-Submit Correction' : 'Upload Submission'}
+        </h1>
+        <p className="text-slate-500 dark:text-slate-400 mt-1">
+          {resubmit ? 'Make necessary corrections as requested by your mentor' : 'Submit your activities for mentor review and credits'}
+        </p>
       </div>
+
+      {resubmit && (
+        <div className="mb-6 p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-xl">
+          <p className="text-sm font-bold text-red-600 dark:text-red-400">Mentor Feedback Rejection Review:</p>
+          <p className="text-sm text-red-500 dark:text-red-300 mt-1 italic">"{resubmit.review}"</p>
+        </div>
+      )}
+
       <div className="card">
         <form onSubmit={handleSubmit} className="space-y-5">
 
@@ -82,12 +173,54 @@ export const StudentSubmission = () => {
               required
             >
               <option value="">Select a category</option>
-              {ACTIVITY_TYPES.map(t => <option key={t}>{t}</option>)}
+              {allTypes.map(t => <option key={t}>{t}</option>)}
+              <option value="Other">Other (Add New Category)</option>
             </select>
           </div>
 
+          {/* ---- Custom Category fields if "Other" selected ---- */}
+          {form.type === 'Other' && (
+            <div className="p-4 bg-orange-50 dark:bg-orange-950/10 border border-orange-200 dark:border-orange-900/40 rounded-xl space-y-4 animate-fade-in">
+              <h4 className="text-sm font-bold text-orange-600 dark:text-orange-400 flex items-center gap-1.5">
+                <span>➕</span> Create New Custom Activity Category
+              </h4>
+              <div>
+                <label className="label-field text-xs">New Category Name</label>
+                <input
+                  className="input-field"
+                  placeholder="e.g. Cybersecurity Certifications"
+                  value={form.customCategory}
+                  onChange={e => set('customCategory', e.target.value)}
+                  required
+                />
+              </div>
+              <div>
+                <label className="label-field text-xs">Achievement / Milestone / Level Name</label>
+                <input
+                  className="input-field"
+                  placeholder="e.g. CEH Certified Professional"
+                  value={form.customAchievementType}
+                  onChange={e => set('customAchievementType', e.target.value)}
+                  required
+                />
+              </div>
+              <div>
+                <label className="label-field text-xs">Suggested Credits / Points</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="200"
+                  className="input-field"
+                  value={form.customPoints}
+                  onChange={e => set('customPoints', e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+          )}
+
           {/* ---- Achievement / Activity Type ---- */}
-          {form.type && (
+          {form.type && form.type !== 'Other' && (
             <div>
               <label className="label-field">Achievement / Activity Type</label>
               <select
@@ -103,8 +236,6 @@ export const StudentSubmission = () => {
                   </option>
                 ))}
               </select>
-
-
             </div>
           )}
 
@@ -147,9 +278,9 @@ export const StudentSubmission = () => {
 
           {/* ---- File Uploads ---- */}
           <div className="space-y-3 pt-1">
-            <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+            <p className="text-sm font-semibold text-slate-700 dark:text-slate-350 flex items-center gap-2">
               <UploadCloud className="w-4 h-4 text-primary-500" />
-              Supporting Documents <span className="font-normal text-slate-400">(at least one recommended)</span>
+              Supporting Documents <span className="font-normal text-slate-400 dark:text-slate-500">(at least one required)</span>
             </p>
 
             {/* Certificate / PDF / Image */}
@@ -194,22 +325,22 @@ export const StudentSubmission = () => {
               </label>
             </div>
 
-            {/* Word Document / Report */}
+            {/* Word Document / Report / Spreadsheet */}
             <div>
               <label className="label-field text-xs">
-                Report / Document <span className="text-primary-500 font-medium">(DOC / DOCX / PDF)</span>
+                Report / Document / Spreadsheet <span className="text-primary-500 font-medium">(DOC / DOCX / XLS / XLSX / PDF)</span>
               </label>
               <label className="flex items-center gap-3 input-field cursor-pointer hover:border-primary-400 transition-colors group">
                 <span className="text-xl shrink-0 group-hover:scale-110 transition-transform">📝</span>
                 <span className={`text-sm truncate flex-1 ${form.documentFile ? 'text-slate-700 dark:text-slate-200 font-medium' : 'text-slate-400'}`}>
-                  {form.documentFile || 'Upload Word document or report (.doc / .docx)…'}
+                  {form.documentFile || 'Upload Word, Excel document or PDF (.doc / .docx / .xls / .xlsx / .pdf)…'}
                 </span>
                 {form.documentFile && (
                   <span className="text-xs text-emerald-500 shrink-0">✓ Selected</span>
                 )}
                 <input
                   type="file"
-                  accept=".doc,.docx,.pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
                   className="hidden"
                   onChange={e => set('documentFile', e.target.files[0]?.name || '')}
                 />
@@ -440,28 +571,84 @@ export const StudentMetrics = () => {
 };
 
 // ---- Profile ----
+// ---- Profile ----
 export const StudentProfile = () => {
   const { user, refreshUser } = useAuth();
   const { showToast, ToastComponent } = useToast();
+  const [editMode, setEditMode] = useState(false);
   const [editPass, setEditPass] = useState(false);
   const [password, setPassword] = useState({ new: '', confirm: '' });
   const [avatar, setAvatar] = useState(user?.avatar || null);
+
+  const [editForm, setEditForm] = useState({
+    name: user?.name || '',
+    email: user?.email || '',
+    college: user?.college || '',
+    department: user?.department || '',
+    rollNo: user?.rollNo || '',
+    phone: user?.phone || '',
+    mentorId: user?.mentorId || '',
+    mentorName: user?.mentorName || '',
+  });
+
   const totalCredits = getTotalCredits(user.id);
   const stars = getStars(totalCredits);
   const badge = getAchievementBadge(stars);
 
+  const allMentors = getUsers().filter(u => u.role === 'MENTOR' && u.status === 'approved');
+
   const handleAvatarChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
+
+    // Enforce <= 1MB size limit
+    const MAX_SIZE = 1024 * 1024; // 1MB
+    if (file.size > MAX_SIZE) {
+      showToast('Upload failed! File size exceeds 1MB limit. Please upload a smaller image of your ID card.', 'error');
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (ev) => {
       const dataUrl = ev.target.result;
       setAvatar(dataUrl);
       updateUser(user.id, { avatar: dataUrl });
       refreshUser();
-      showToast('Profile photo updated!', 'success');
+      showToast('ID card photo uploaded successfully!', 'success');
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleSaveProfile = () => {
+    if (!editForm.name.trim()) {
+      showToast('Full name is required.', 'error');
+      return;
+    }
+
+    const oldMentorId = user.mentorId;
+    const newMentorId = editForm.mentorId;
+
+    updateUser(user.id, {
+      name: editForm.name,
+      email: editForm.email,
+      college: editForm.college,
+      department: editForm.department,
+      rollNo: editForm.rollNo,
+      phone: editForm.phone,
+      mentorId: editForm.mentorId,
+      mentorName: editForm.mentorName,
+    });
+
+    // If mentor has changed, update old submissions to the new mentor
+    if (oldMentorId !== newMentorId) {
+      const allSubs = getSubmissions();
+      const updatedSubs = allSubs.map(s => s.studentId === user.id ? { ...s, mentorId: newMentorId } : s);
+      saveSubmissions(updatedSubs);
+    }
+
+    refreshUser();
+    showToast('Profile updated successfully!', 'success');
+    setEditMode(false);
   };
 
   const handlePasswordChange = () => {
@@ -476,50 +663,176 @@ export const StudentProfile = () => {
   return (
     <div className="animate-fade-in max-w-2xl">
       {ToastComponent}
-      <div className="mb-8">
-        <h1 className="font-display text-3xl font-bold text-slate-900 dark:text-white">My Profile</h1>
-        <p className="text-slate-500 dark:text-slate-400 mt-1">View and update your profile</p>
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <h1 className="font-display text-3xl font-bold text-slate-900 dark:text-white">My Profile</h1>
+          <p className="text-slate-500 dark:text-slate-400 mt-1">View and update your profile details</p>
+        </div>
+        <button
+          onClick={() => {
+            if (editMode) {
+              setEditForm({
+                name: user?.name || '',
+                email: user?.email || '',
+                college: user?.college || '',
+                department: user?.department || '',
+                rollNo: user?.rollNo || '',
+                phone: user?.phone || '',
+                mentorId: user?.mentorId || '',
+                mentorName: user?.mentorName || '',
+              });
+            }
+            setEditMode(!editMode);
+          }}
+          className="btn-secondary text-sm font-semibold"
+        >
+          {editMode ? 'Cancel Edit' : 'Edit Profile'}
+        </button>
       </div>
 
-      {/* Profile Card */}
+      {/* Profile Avatar Card */}
       <div className="card mb-6">
         <div className="flex flex-col sm:flex-row items-center gap-6">
-          <div className="relative">
+          <div className="relative shrink-0">
             <Avatar name={user.name} src={avatar} size="xl" />
             <label className="absolute -bottom-1 -right-1 p-1.5 bg-primary-600 text-white rounded-full cursor-pointer hover:bg-primary-700 transition-colors shadow">
               <UploadCloud className="w-4 h-4" />
               <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
             </label>
           </div>
-          <div className="text-center sm:text-left">
+          <div className="text-center sm:text-left flex-1">
             <h2 className="font-display text-2xl font-bold text-slate-900 dark:text-white">{user.name}</h2>
             <StarsDisplay count={stars} size="md" />
             <div className="flex flex-wrap gap-2 mt-2 justify-center sm:justify-start">
               <Badge variant="purple">{badge}</Badge>
               <Badge variant="blue">{totalCredits} Credits</Badge>
             </div>
+            
+            {/* Warning Message */}
+            <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-xl max-w-md">
+              <p className="text-[11px] text-amber-700 dark:text-amber-350 leading-relaxed font-semibold">
+                ⚠️ Verification Notice: Upload only your official college ID card photo. Do not upload personal photos. Limit: 1MB.
+              </p>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Details */}
+      {/* Details Card */}
       <div className="card mb-6">
-        <h3 className="font-semibold text-slate-800 dark:text-white mb-4">Profile Details</h3>
-        <div className="space-y-3">
-          {[
-            ['Full Name', user.name],
-            ['Email', user.email],
-            ['College', user.college],
-            ['Department', user.department],
-            ['Mentor', user.mentorName || 'Not assigned'],
-            ['Role', user.role],
-          ].map(([label, val]) => (
-            <div key={label} className="flex items-center gap-4 py-2 border-b border-slate-100 dark:border-dark-700 last:border-0">
-              <span className="text-sm font-medium text-slate-500 dark:text-slate-400 w-32 shrink-0">{label}</span>
-              <span className="text-sm text-slate-900 dark:text-white">{val}</span>
+        <h3 className="font-semibold text-slate-800 dark:text-white mb-4">
+          {editMode ? 'Edit Profile Details' : 'Profile Details'}
+        </h3>
+        
+        {editMode ? (
+          <div className="space-y-4">
+            <div>
+              <label className="label-field text-xs">Full Name</label>
+              <input
+                className="input-field"
+                value={editForm.name}
+                onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+                required
+              />
             </div>
-          ))}
-        </div>
+
+            <div>
+              <label className="label-field text-xs">Roll Number</label>
+              <input
+                className="input-field"
+                value={editForm.rollNo}
+                placeholder="e.g. CS21001"
+                onChange={e => setEditForm(f => ({ ...f, rollNo: e.target.value }))}
+              />
+            </div>
+
+            <div>
+              <label className="label-field text-xs">Email Address</label>
+              <input
+                type="email"
+                className="input-field"
+                value={editForm.email}
+                onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))}
+              />
+            </div>
+
+            <div>
+              <label className="label-field text-xs">Contact Number</label>
+              <input
+                className="input-field"
+                value={editForm.phone}
+                placeholder="e.g. +91 9876543210"
+                onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))}
+              />
+            </div>
+
+            <div>
+              <label className="label-field text-xs">College Name</label>
+              <input
+                className="input-field"
+                value={editForm.college}
+                onChange={e => setEditForm(f => ({ ...f, college: e.target.value }))}
+              />
+            </div>
+
+            <div>
+              <label className="label-field text-xs">Department</label>
+              <input
+                className="input-field"
+                value={editForm.department}
+                onChange={e => setEditForm(f => ({ ...f, department: e.target.value }))}
+              />
+            </div>
+
+            <div>
+              <label className="label-field text-xs">Assigned Mentor</label>
+              <select
+                className="select-field"
+                value={editForm.mentorId}
+                onChange={e => {
+                  const selectedMentor = allMentors.find(m => m.id === e.target.value);
+                  setEditForm(f => ({
+                    ...f,
+                    mentorId: e.target.value,
+                    mentorName: selectedMentor ? selectedMentor.name : ''
+                  }));
+                }}
+              >
+                <option value="">Select a mentor</option>
+                {allMentors.map(m => (
+                  <option key={m.id} value={m.id}>
+                    {m.name} ({m.department})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <button
+              onClick={handleSaveProfile}
+              className="btn-primary w-full justify-center py-2.5 font-bold"
+            >
+              Save Details
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {[
+              ['Full Name', user.name],
+              ['Roll Number', user.rollNo || 'Not specified'],
+              ['Email', user.email],
+              ['Phone', user.phone || 'Not specified'],
+              ['College', user.college],
+              ['Department', user.department],
+              ['Mentor', user.mentorName || 'Not assigned'],
+              ['Role', user.role],
+            ].map(([label, val]) => (
+              <div key={label} className="flex items-center gap-4 py-2 border-b border-slate-100 dark:border-dark-700 last:border-0">
+                <span className="text-sm font-medium text-slate-500 dark:text-slate-400 w-32 shrink-0">{label}</span>
+                <span className="text-sm text-slate-900 dark:text-white">{val}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Password Change */}
@@ -542,6 +855,114 @@ export const StudentProfile = () => {
           </div>
         )}
         {!editPass && <p className="text-sm text-slate-500 dark:text-slate-400">••••••••</p>}
+      </div>
+    </div>
+  );
+};
+
+// ---- Student Reviews Page ----
+export const StudentReviews = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const submissions = getSubmissionsByStudent(user.id);
+  const reviewedSubmissions = submissions.filter(s => s.status !== 'pending' || s.review);
+
+  const approved = reviewedSubmissions.filter(s => s.status === 'approved');
+  const rejected = reviewedSubmissions.filter(s => s.status === 'rejected');
+
+  return (
+    <div className="animate-fade-in">
+      <div className="mb-8">
+        <h1 className="font-display text-3xl font-bold text-slate-900 dark:text-white">Mentor Reviews</h1>
+        <p className="text-slate-500 dark:text-slate-400 mt-1">
+          Review comments and feedback given by your mentor on your submissions and logs
+        </p>
+      </div>
+
+      {/* Review Metrics */}
+      <div className="grid sm:grid-cols-3 gap-6 mb-8">
+        <StatCard icon={<FileText className="w-6 h-6" />} label="Reviewed Activities" value={reviewedSubmissions.length} color="primary" />
+        <StatCard icon={<CheckCircle className="w-6 h-6" />} label="Approved" value={approved.length} color="green" />
+        <StatCard icon={<XCircle className="w-6 h-6" />} label="Rejected / Action Required" value={rejected.length} color="red" />
+      </div>
+
+      <div className="space-y-6">
+        {reviewedSubmissions.length === 0 ? (
+          <div className="card">
+            <EmptyState
+              icon={<BookOpen className="w-12 h-12 text-slate-355" />}
+              title="No Reviews Yet"
+              subtitle="Your mentor hasn't reviewed any of your submissions or daily logs yet. Once reviewed, feedback will appear here."
+            />
+          </div>
+        ) : (
+          reviewedSubmissions.map(s => {
+            const isRejected = s.status === 'rejected';
+            return (
+              <div
+                key={s.id}
+                className={`card border-l-4 transition-all duration-300 ${
+                  isRejected 
+                    ? 'border-l-red-500 bg-red-50/10 dark:bg-red-950/5 border-red-100 dark:border-dark-800' 
+                    : 'border-l-emerald-500 bg-emerald-50/10 dark:bg-emerald-950/5 border-emerald-100 dark:border-dark-800'
+                }`}
+              >
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-mono text-slate-400 dark:text-slate-500">{s.submittedAt || s.date}</span>
+                      <span className="text-slate-300 dark:text-slate-700">•</span>
+                      <Badge variant="blue">{s.type}</Badge>
+                      <span className="text-slate-300 dark:text-slate-700">•</span>
+                      <Badge variant={isRejected ? 'red' : 'green'}>
+                        {isRejected ? 'Rejected (Requires Correction)' : 'Approved & Credited'}
+                      </Badge>
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white mt-1">{s.title}</h3>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 max-w-2xl">{s.description}</p>
+                  </div>
+
+                  <div className="text-left md:text-right shrink-0">
+                    <p className="text-xs text-slate-400">Awarded Credits</p>
+                    <p className={`text-2xl font-extrabold ${isRejected ? 'text-slate-400 line-through' : 'text-emerald-500 dark:text-emerald-400'}`}>
+                      {isRejected ? '0' : s.credits || s.suggestedCredits || '0'} pts
+                    </p>
+                  </div>
+                </div>
+
+                {/* Mentor Feedback Area */}
+                <div className="mt-4 p-4 bg-slate-100 dark:bg-dark-900 rounded-xl border border-slate-200 dark:border-dark-750">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-950/30 text-primary-600 dark:text-primary-400 flex items-center justify-center font-bold text-sm shrink-0">
+                      👨‍🏫
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <p className="text-xs font-bold text-slate-500 dark:text-slate-400">Mentor Comments & Advice:</p>
+                      <p className="text-sm text-slate-800 dark:text-slate-200 italic font-medium">
+                        {s.review ? `"${s.review}"` : '"No comments left by mentor."'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Resubmission Action for Rejected activities */}
+                {isRejected && (
+                  <div className="mt-4 pt-3 border-t border-red-100 dark:border-red-950/35 flex items-center justify-between flex-wrap gap-3">
+                    <p className="text-xs text-red-500 dark:text-red-400 flex items-center gap-1">
+                      ⚠️ <strong>Action Required:</strong> Please re-upload this activity after making the requested corrections.
+                    </p>
+                    <button
+                      onClick={() => navigate('/dashboard/student/submission', { state: { resubmitActivity: s } })}
+                      className="btn-primary py-2 px-4 text-xs font-bold bg-red-600 hover:bg-red-700 text-white"
+                    >
+                      🔄 Edit & Re-Submit
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
       </div>
     </div>
   );

@@ -16,7 +16,7 @@ const KEYS = {
 };
 
 // Bump this when seed data schema changes so localStorage is refreshed
-const CURRENT_DB_VERSION = '3';
+const CURRENT_DB_VERSION = '4';
 
 // ---- INIT ----
 export const initDB = () => {
@@ -261,6 +261,32 @@ export const addDepartmentToCollege = (collegeName, departmentName) => {
 // ---- THEME ----
 export const getTheme = () => localStorage.getItem(KEYS.THEME) || 'dark';
 export const setTheme = (theme) => localStorage.setItem(KEYS.THEME, theme);
+
+// ---- DYNAMIC CATEGORIES ----
+export const getCustomCategories = () => {
+  try {
+    return JSON.parse(localStorage.getItem('spark_custom_categories') || '{}');
+  } catch (e) {
+    return {};
+  }
+};
+
+export const saveCustomCategories = (cats) => {
+  localStorage.setItem('spark_custom_categories', JSON.stringify(cats));
+};
+
+export const addCustomCategory = (name, achievementType, points) => {
+  const custom = getCustomCategories();
+  const trimmedName = name.trim();
+  if (!custom[trimmedName]) {
+    custom[trimmedName] = [];
+  }
+  const exists = custom[trimmedName].some(s => s.label === achievementType);
+  if (!exists) {
+    custom[trimmedName].push({ label: achievementType.trim(), points: Number(points) || 15 });
+    saveCustomCategories(custom);
+  }
+};
 
 // ---- HELPERS ----
 export const generateId = (prefix = 'id') =>

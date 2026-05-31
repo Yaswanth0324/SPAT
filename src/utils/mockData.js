@@ -375,6 +375,9 @@ export const INITIAL_SUBMISSIONS = [
     review: 'Excellent work! Very innovative approach.',
     fileUrl: '#',
     submittedAt: '2024-02-20',
+    certificateFile: 'certificate_dummy.png',
+    presentationFile: 'presentation_dummy.png',
+    documentFile: 'document_dummy.png'
   },
   {
     id: 'sub_002',
@@ -391,6 +394,7 @@ export const INITIAL_SUBMISSIONS = [
     review: 'Great achievement!',
     fileUrl: '#',
     submittedAt: '2024-01-15',
+    certificateFile: 'certificate_dummy.png'
   },
   {
     id: 'sub_003',
@@ -407,6 +411,8 @@ export const INITIAL_SUBMISSIONS = [
     review: '',
     fileUrl: '#',
     submittedAt: '2024-03-05',
+    certificateFile: 'certificate_dummy.png',
+    documentFile: 'document_dummy.png'
   },
   {
     id: 'sub_004',
@@ -423,6 +429,7 @@ export const INITIAL_SUBMISSIONS = [
     review: 'Good participation.',
     fileUrl: '#',
     submittedAt: '2024-02-05',
+    certificateFile: 'certificate_dummy.png'
   },
   {
     id: 'sub_005',
@@ -439,6 +446,7 @@ export const INITIAL_SUBMISSIONS = [
     review: 'Missing official certificate. Please resubmit with proper documentation.',
     fileUrl: '#',
     submittedAt: '2024-01-25',
+    certificateFile: 'certificate_dummy.png'
   },
   {
     id: 'sub_006',
@@ -455,6 +463,8 @@ export const INITIAL_SUBMISSIONS = [
     review: 'Outstanding! Great company placement.',
     fileUrl: '#',
     submittedAt: '2024-07-10',
+    certificateFile: 'certificate_dummy.png',
+    documentFile: 'document_dummy.png'
   },
 ];
 

@@ -22,7 +22,6 @@ export const HODMentorApprovals = () => {
   const [mentors, setMentors] = useState(() =>
     getUsers().filter(u => u.role === ROLES.MENTOR && u.college === user.college && u.department === user.department)
   );
-  const students = getUsers().filter(u => u.role === ROLES.STUDENT && u.college === user.college && u.department === user.department);
 
   const handleAction = (id, action) => {
     updateUser(id, { status: action });
@@ -30,23 +29,102 @@ export const HODMentorApprovals = () => {
     showToast(`Mentor ${action === 'approved' ? 'approved ✓' : 'rejected'}`, action === 'approved' ? 'success' : 'error');
   };
 
-  const pending  = mentors.filter(m => m.status === 'pending');
-  const approved = mentors.filter(m => m.status === 'approved');
+  const handleSuccessionAction = (mentorId, action) => {
+    const allUsers = getUsers();
+    const mentorIdx = allUsers.findIndex(u => u.id === mentorId);
+    
+    if (mentorIdx !== -1) {
+      const mentor = allUsers[mentorIdx];
+      const req = mentor.successionRequest;
+
+      if (action === 'approved') {
+        allUsers[mentorIdx] = {
+          ...mentor,
+          name: req.name,
+          email: req.email,
+          password: req.password,
+          phone: req.phone,
+          profileImage: null,
+          successionRequest: null
+        };
+        showToast(`Mentor succession approved. ${req.name} is now the Mentor! ✓`, 'success');
+      } else {
+        allUsers[mentorIdx] = {
+          ...mentor,
+          successionRequest: null
+        };
+        showToast('Mentor succession request rejected.', 'error');
+      }
+
+      // Save to localStorage
+      localStorage.setItem('spark_users', JSON.stringify(allUsers));
+      
+      // Update local state to force re-render
+      setMentors(allUsers.filter(u => u.role === ROLES.MENTOR && u.college === user.college && u.department === user.department));
+    }
+  };
+
+  const pending = mentors.filter(m => m.status === 'pending');
+  const successionRequests = mentors.filter(m => m.successionRequest && m.successionRequest.status === 'pending');
 
   return (
-    <div className="animate-fade-in">
+    <div className="animate-fade-in space-y-6">
       {ToastComponent}
       <div className="mb-8">
         <h1 className="font-display text-3xl font-bold text-slate-900 dark:text-white">Mentor Approvals</h1>
         <p className="text-slate-500 dark:text-slate-400 mt-1">{user.department}</p>
       </div>
 
+      {/* Mentor succession requests */}
+      {successionRequests.length > 0 && (
+        <div className="space-y-4 mb-8">
+          <h2 className="font-semibold text-slate-800 dark:text-white flex items-center gap-2">
+            <span className="flex h-2.5 w-2.5 rounded-full bg-orange-500 animate-pulse"></span>
+            Mentor Handover & Succession Requests ({successionRequests.length})
+          </h2>
+          {successionRequests.map(m => (
+            <div key={m.id} className="card flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-l-4 border-orange-500 bg-orange-500/5">
+              <div className="flex items-center gap-3">
+                <Avatar name={m.successionRequest.name} size="md" />
+                <div>
+                  <p className="font-bold text-slate-900 dark:text-white">
+                    {m.successionRequest.name} <span className="text-xs font-normal text-slate-500">(New Mentor Candidate)</span>
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    Email: {m.successionRequest.email} | Phone: {m.successionRequest.phone || 'No phone'}
+                  </p>
+                  <p className="text-[10px] text-slate-400 mt-1 uppercase tracking-wider font-bold">
+                    Replacing Mentor: {m.name}
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-2 self-end sm:self-center">
+                <button
+                  onClick={() => handleSuccessionAction(m.id, 'approved')}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all"
+                >
+                  Approve Succession
+                </button>
+                <button
+                  onClick={() => handleSuccessionAction(m.id, 'rejected')}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition-all"
+                >
+                  Reject
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="mb-8">
         <h2 className="font-semibold text-slate-800 dark:text-white mb-4">
-          Pending Mentor Requests {pending.length > 0 && <span className="ml-2 badge-yellow">{pending.length}</span>}
+          Pending Mentor Registrations {pending.length > 0 && <span className="ml-2 badge-yellow">{pending.length}</span>}
         </h2>
-        {pending.length === 0 ? (
+        {pending.length === 0 && successionRequests.length === 0 ? (
           <div className="card"><EmptyState icon={<CheckSquare className="w-12 h-12" />} title="No pending approvals" subtitle="All mentor requests are processed" /></div>
+        ) : pending.length === 0 ? (
+          <div className="card"><EmptyState icon={<CheckSquare className="w-12 h-12" />} title="No pending registrations" subtitle="All registration requests processed." /></div>
         ) : (
           <div className="space-y-3">
             {pending.map(m => (

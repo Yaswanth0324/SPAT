@@ -7,8 +7,8 @@ import { ROLES } from '../../utils/mockData';
 
 const roleLinks = {
   [ROLES.SYSTEM_ADMIN]: [
-    { to: '/dashboard/system-admin/analytics', icon: <LayoutDashboard className="w-5 h-5" />, label: 'Dashboard' },
-    { to: '/dashboard/system-admin', end: true, icon: <Building2 className="w-5 h-5" />, label: 'Colleges' },
+    { to: '/dashboard/system-admin', end: true, icon: <LayoutDashboard className="w-5 h-5" />, label: 'Dashboard' },
+    { to: '/dashboard/system-admin/colleges', icon: <Building2 className="w-5 h-5" />, label: 'Colleges' },
     { to: '/dashboard/system-admin/add-admin', icon: <UserPlus className="w-5 h-5" />, label: 'Add College Admin' },
   ],
   [ROLES.COLLEGE_ADMIN]: [
@@ -24,13 +24,16 @@ const roleLinks = {
     { to: '/dashboard/hod/profile', icon: <User className="w-5 h-5" />, label: 'Profile' },
   ],
   [ROLES.MENTOR]: [
-    { to: '/dashboard/mentor', end: true, icon: <Users className="w-5 h-5" />, label: 'Students' },
+    { to: '/dashboard/mentor', end: true, icon: <LayoutDashboard className="w-5 h-5" />, label: 'Dashboard' },
+    { to: '/dashboard/mentor/students', icon: <Users className="w-5 h-5" />, label: 'Students' },
     { to: '/dashboard/mentor/submissions', icon: <FileText className="w-5 h-5" />, label: 'Submissions' },
+    { to: '/dashboard/mentor/profile', icon: <User className="w-5 h-5" />, label: 'Profile' },
   ],
   [ROLES.STUDENT]: [
-    { to: '/dashboard/student', end: true, icon: <UploadCloud className="w-5 h-5" />, label: 'Upload Submission' },
+    { to: '/dashboard/student', end: true, icon: <LayoutDashboard className="w-5 h-5" />, label: 'Dashboard' },
+    { to: '/dashboard/student/submission', icon: <UploadCloud className="w-5 h-5" />, label: 'Upload Submission' },
     { to: '/dashboard/student/logs', icon: <BookOpen className="w-5 h-5" />, label: 'Daily Logs' },
-    { to: '/dashboard/student/metrics', icon: <BarChart2 className="w-5 h-5" />, label: 'Metrics' },
+    { to: '/dashboard/student/reviews', icon: <FileText className="w-5 h-5" />, label: 'Mentor Reviews' },
     { to: '/dashboard/student/profile', icon: <User className="w-5 h-5" />, label: 'Profile' },
   ],
 };

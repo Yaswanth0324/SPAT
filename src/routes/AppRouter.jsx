@@ -18,7 +18,9 @@ import { HODMentorApprovals, HODMentors } from '../pages/Dashboards/HOD/HODPages
 import { HODDashboard } from '../pages/Dashboards/HOD/HODDashboard';
 import { HODProfile } from '../pages/Dashboards/HOD/HODProfile';
 import { MentorStudents, MentorSubmissions } from '../pages/Dashboards/Mentor/MentorPages';
-import { StudentSubmission, StudentLogs, StudentMetrics, StudentProfile } from '../pages/Dashboards/Student/StudentPages';
+import { MentorDashboard } from '../pages/Dashboards/Mentor/MentorDashboard';
+import { MentorProfile } from '../pages/Dashboards/Mentor/MentorProfile';
+import { StudentSubmission, StudentLogs, StudentMetrics, StudentProfile, StudentReviews } from '../pages/Dashboards/Student/StudentPages';
 
 const AppRouter = () => (
   <BrowserRouter>
@@ -33,9 +35,9 @@ const AppRouter = () => (
       <Route path="/dashboard/system-admin" element={
         <ProtectedRoute allowedRoles={[ROLES.SYSTEM_ADMIN]}><RoleDashboardLayout /></ProtectedRoute>
       }>
-        <Route index element={<SystemAdminColleges />} />
+        <Route index element={<SystemAdminAnalyticsDashboard />} />
+        <Route path="colleges" element={<SystemAdminColleges />} />
         <Route path="add-admin" element={<SystemAdminAddAdmin />} />
-        <Route path="analytics" element={<SystemAdminAnalyticsDashboard />} />
       </Route>
 
       {/* College Admin */}
@@ -62,17 +64,20 @@ const AppRouter = () => (
       <Route path="/dashboard/mentor" element={
         <ProtectedRoute allowedRoles={[ROLES.MENTOR]}><RoleDashboardLayout /></ProtectedRoute>
       }>
-        <Route index element={<MentorStudents />} />
+        <Route index element={<MentorDashboard />} />
+        <Route path="students" element={<MentorStudents />} />
         <Route path="submissions" element={<MentorSubmissions />} />
+        <Route path="profile" element={<MentorProfile />} />
       </Route>
 
       {/* Student */}
       <Route path="/dashboard/student" element={
         <ProtectedRoute allowedRoles={[ROLES.STUDENT]}><RoleDashboardLayout /></ProtectedRoute>
       }>
-        <Route index element={<StudentSubmission />} />
+        <Route index element={<StudentMetrics />} />
+        <Route path="submission" element={<StudentSubmission />} />
         <Route path="logs" element={<StudentLogs />} />
-        <Route path="metrics" element={<StudentMetrics />} />
+        <Route path="reviews" element={<StudentReviews />} />
         <Route path="profile" element={<StudentProfile />} />
       </Route>
 
