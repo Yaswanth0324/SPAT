@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { GraduationCap, Eye, EyeOff, Shield, KeyRound, Mail, ArrowLeft, CheckCircle, ChevronDown, PlusCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { adminLogin, login as loginUser, getUsers, getDepartmentsByCollege, addDepartmentToCollege } from '../../utils/localStorage';
+import { adminLogin, login as loginUser, getUsers, getDepartmentsByCollege, addDepartmentToCollege, getColleges } from '../../utils/localStorage';
 import { useToast } from '../../components/ui/UIComponents';
-import { ROLES, COLLEGES, DEPARTMENTS } from '../../utils/mockData';
+import { ROLES } from '../../utils/mockData';
 
 // ---- System / Admin Login ----
 export const AdminLoginPage = () => {
@@ -66,11 +66,6 @@ export const AdminLoginPage = () => {
             {loading ? 'Authenticating...' : 'Login as Admin'}
           </button>
         </form>
-        <div className="mt-4 p-3 bg-primary-50 dark:bg-primary-950/30 rounded-xl text-xs text-primary-700 dark:text-primary-300">
-          <p className="font-semibold mb-1">Demo Credentials:</p>
-          <p>System Admin: admin@spark.edu / admin123 / SA001</p>
-          <p>College Admin: ramesh@mit.edu / admin123 / CA001</p>
-        </div>
         <p className="text-center text-sm text-slate-500 dark:text-slate-400 mt-6">
           Not an admin? <Link to="/login" className="text-primary-600 dark:text-primary-400 font-semibold hover:underline">User Login</Link>
         </p>
@@ -311,7 +306,7 @@ const LoginPage = () => {
               required
             >
               <option value="">Select your College</option>
-              {COLLEGES.map(c => <option key={c} value={c}>{c}</option>)}
+              {getColleges().map(c => <option key={c.id || c.name} value={c.name}>{c.name}</option>)}
             </select>
           </div>
 
@@ -427,13 +422,6 @@ const LoginPage = () => {
           )}
         </form>
 
-        <div className="mt-4 p-3 bg-primary-50 dark:bg-primary-950/30 rounded-xl text-xs text-primary-700 dark:text-primary-300 space-y-0.5">
-          <p className="font-semibold">Demo Accounts:</p>
-          <p>HOD: priya@mit.edu / hod123 → Role: HOD</p>
-          <p>Mentor: arun@mit.edu / mentor123 → Role: Mentor</p>
-          <p>Student: rahul@student.mit.edu / student123 → Role: Student</p>
-          <p className="text-primary-500 dark:text-primary-400 mt-1">College: MIT College of Engineering → Dept: Computer Science and Engineering</p>
-        </div>
 
         <div className="flex items-center justify-between mt-5">
           <Link to="/admin-login" className="text-sm text-primary-600 dark:text-primary-400 hover:underline">Admin Login</Link>

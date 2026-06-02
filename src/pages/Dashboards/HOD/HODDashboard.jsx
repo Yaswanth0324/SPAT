@@ -166,7 +166,7 @@ export const HODDashboard = () => {
 
     const trend = months.map(m => ({
       month: m,
-      achievements: monthlyMap[m] || (m === 'Jan' ? 3 : m === 'Feb' ? 6 : m === 'Mar' ? 4 : m === 'Apr' ? 5 : m === 'May' ? 8 : 4)
+      achievements: monthlyMap[m] || 0,
     }));
 
     return {

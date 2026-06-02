@@ -7,7 +7,7 @@ import {
   getColleges, addUser, addCollege, saveColleges,
   generateId, generateAdminId,
 } from '../../../utils/localStorage';
-import { ROLES, INITIAL_COLLEGES_DATA } from '../../../utils/mockData';
+import { ROLES } from '../../../utils/mockData';
 import { Modal, Badge, useToast, EmptyState, Avatar } from '../../../components/ui/UIComponents';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -47,10 +47,7 @@ const addTwoYears = (dateStr) => {
 const CollegeDetailModal = ({ college, onClose }) => {
   if (!college) return null;
 
-  // Patch: merge seed data for colleges that pre-date new fields (address, contractStart, etc.)
-  const seedRecord = (INITIAL_COLLEGES_DATA || []).find(c => c.id === college.id) || {};
-  // stored data takes priority; seed fills any missing fields
-  const col = { ...seedRecord, ...college };
+  const col = { ...college };
 
   const remaining = calcRemaining(col.contractEnd);
   const isExpired = remaining !== null && remaining === 0;

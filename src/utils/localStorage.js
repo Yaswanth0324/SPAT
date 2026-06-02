@@ -1,8 +1,8 @@
 // =====================================================================
-// SPARK localStorage utility functions - Mock Database
+// SPARK localStorage utility functions
 // =====================================================================
 
-import { INITIAL_USERS, INITIAL_SUBMISSIONS, INITIAL_LOGS, INITIAL_COLLEGES_DATA, DEPARTMENTS } from './mockData';
+import { DEPARTMENTS } from './mockData';
 
 const KEYS = {
   USERS: 'spark_users',
@@ -12,54 +12,15 @@ const KEYS = {
   COLLEGES: 'spark_colleges',
   REGISTERED: 'spark_registered',
   THEME: 'spark_theme',
-  DB_VERSION: 'spark_db_version',
 };
-
-// Bump this when seed data schema changes so localStorage is refreshed
-const CURRENT_DB_VERSION = '4';
 
 // ---- INIT ----
 export const initDB = () => {
-  // Always ensure built-in accounts exist / are refreshed
-  const existingUsersRaw = localStorage.getItem(KEYS.USERS);
-  if (!existingUsersRaw) {
-    localStorage.setItem(KEYS.USERS, JSON.stringify(INITIAL_USERS));
-  } else {
-    // Merge strategy: always keep built-in admin accounts current
-    const users = JSON.parse(existingUsersRaw);
-    let changed = false;
-    INITIAL_USERS.forEach(seed => {
-      const idx = users.findIndex(u => u.id === seed.id);
-      if (idx === -1) {
-        users.push(seed);
-        changed = true;
-      } else {
-        // Overwrite to keep passwords / adminId in sync with seed
-        users[idx] = { ...seed, ...users[idx], password: seed.password, adminId: seed.adminId, role: seed.role };
-        changed = true;
-      }
-    });
-    if (changed) localStorage.setItem(KEYS.USERS, JSON.stringify(users));
-  }
-
-  // Re-seed submissions + colleges if DB version changed
-  const storedVersion = localStorage.getItem(KEYS.DB_VERSION);
-  if (storedVersion !== CURRENT_DB_VERSION) {
-    localStorage.setItem(KEYS.SUBMISSIONS, JSON.stringify(INITIAL_SUBMISSIONS));
-    localStorage.setItem(KEYS.COLLEGES, JSON.stringify(INITIAL_COLLEGES_DATA));
-    localStorage.setItem(KEYS.DB_VERSION, CURRENT_DB_VERSION);
-  } else if (!localStorage.getItem(KEYS.SUBMISSIONS)) {
-    localStorage.setItem(KEYS.SUBMISSIONS, JSON.stringify(INITIAL_SUBMISSIONS));
-  }
-  if (!localStorage.getItem(KEYS.LOGS)) {
-    localStorage.setItem(KEYS.LOGS, JSON.stringify(INITIAL_LOGS));
-  }
-  if (!localStorage.getItem(KEYS.COLLEGES)) {
-    localStorage.setItem(KEYS.COLLEGES, JSON.stringify(INITIAL_COLLEGES_DATA));
-  }
-  if (!localStorage.getItem(KEYS.REGISTERED)) {
-    localStorage.setItem(KEYS.REGISTERED, 'true'); // pre-seeded = registered
-  }
+  // Initialise empty stores if not yet present — no dummy data seeded
+  if (!localStorage.getItem(KEYS.USERS))       localStorage.setItem(KEYS.USERS, '[]');
+  if (!localStorage.getItem(KEYS.SUBMISSIONS)) localStorage.setItem(KEYS.SUBMISSIONS, '[]');
+  if (!localStorage.getItem(KEYS.LOGS))        localStorage.setItem(KEYS.LOGS, '[]');
+  if (!localStorage.getItem(KEYS.COLLEGES))    localStorage.setItem(KEYS.COLLEGES, '[]');
 };
 
 // ---- USERS ----
@@ -105,18 +66,6 @@ export const login = (email, password, role) => {
   const e = email.trim().toLowerCase();
   const p = password;
 
-  // Check seed data first (always reliable)
-  const seedMatch = role
-    ? INITIAL_USERS.find(u => u.email.toLowerCase() === e && u.password === p && u.role === role)
-    : INITIAL_USERS.find(u => u.email.toLowerCase() === e && u.password === p);
-
-  if (seedMatch) {
-    setCurrentUser(seedMatch);
-    console.log('[SPARK] Login via seed:', seedMatch.role, seedMatch.email);
-    return { success: true, user: seedMatch };
-  }
-
-  // Check localStorage
   const users = getUsers();
   const user = role
     ? users.find(u => u.email?.toLowerCase() === e && u.password === p && u.role === role)
@@ -124,33 +73,18 @@ export const login = (email, password, role) => {
 
   if (user) {
     setCurrentUser(user);
-    console.log('[SPARK] Login via localStorage:', user.role, user.email);
     return { success: true, user };
   }
 
-  console.warn('[SPARK] Login failed for:', { e, role });
   return { success: false, error: 'Invalid credentials' };
 };
 
 
 export const adminLogin = (email, password, adminId) => {
   const e = email.trim().toLowerCase();
-  const p = password; // passwords are case-sensitive
+  const p = password;
   const a = adminId.trim().toUpperCase();
 
-  // ---- Step 1: Always check hardcoded seed accounts first (guaranteed to work) ----
-  const seedUser = INITIAL_USERS.find(u =>
-    u.email.toLowerCase() === e &&
-    u.password === p &&
-    u.adminId?.toUpperCase() === a
-  );
-  if (seedUser) {
-    setCurrentUser(seedUser);
-    console.log('[SPARK] Admin login via seed data:', seedUser.role, seedUser.email);
-    return { success: true, user: seedUser };
-  }
-
-  // ---- Step 2: Check localStorage (for dynamically added admins) ----
   const users = getUsers();
   const user = users.find(u =>
     u.email?.toLowerCase() === e &&
@@ -159,11 +93,9 @@ export const adminLogin = (email, password, adminId) => {
   );
   if (user) {
     setCurrentUser(user);
-    console.log('[SPARK] Admin login via localStorage:', user.role, user.email);
     return { success: true, user };
   }
 
-  console.warn('[SPARK] Admin login failed. Tried:', { e, a, usersCount: users.length });
   return { success: false, error: 'Invalid admin credentials' };
 };
 

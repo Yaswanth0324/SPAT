@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { GraduationCap, Eye, EyeOff, CheckCircle, Upload } from 'lucide-react';
 import { useToast } from '../../components/ui/UIComponents';
-import { COLLEGES, DEPARTMENTS, ROLES } from '../../utils/mockData';
-import { addUser, isEmailRegistered, setRegistered, generateId, simulateOTP, getUsers, getDepartmentsByCollege, addDepartmentToCollege } from '../../utils/localStorage';
+import { DEPARTMENTS, ROLES } from '../../utils/mockData';
+import { addUser, isEmailRegistered, setRegistered, generateId, simulateOTP, getUsers, getDepartmentsByCollege, addDepartmentToCollege, getColleges } from '../../utils/localStorage';
 
 const RegisterPage = () => {
   const navigate = useNavigate();
@@ -111,7 +111,7 @@ const RegisterPage = () => {
                 setCustomDept('');
               }} required>
                 <option value="">Select College</option>
-                {COLLEGES.map(c => <option key={c}>{c}</option>)}
+                {getColleges().map(c => <option key={c.id || c.name} value={c.name}>{c.name}</option>)}
               </select>
             </div>
             <div>

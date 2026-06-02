@@ -112,9 +112,9 @@ export const MentorDashboard = () => {
       }
     });
 
-    const trend = months.map((m, idx) => ({
+    const trend = months.map((m) => ({
       month: m,
-      achievements: monthlyMap[m] || (idx === 0 ? 1 : idx === 1 ? 3 : idx === 2 ? 2 : idx === 3 ? 4 : idx === 4 ? 5 : 2)
+      achievements: monthlyMap[m] || 0,
     }));
 
     // Get top 5 pending submissions

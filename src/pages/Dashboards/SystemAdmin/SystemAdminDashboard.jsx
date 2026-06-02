@@ -11,145 +11,37 @@ import {
   Legend, ResponsiveContainer,
 } from 'recharts';
 
-// ─── Mock Data ─────────────────────────────────────────────────────────────────
+
+// ─── Analytics Data (connect to backend API — currently empty) ────────────────
 
 const KPI_DATA = {
-  totalColleges: { value: 48, trend: '+12%', up: true },
-  activeColleges: { value: 41, trend: '+8%', up: true },
-  inactiveColleges: { value: 7, trend: '-3%', up: false },
-  totalUsers: { value: 12480, trend: '+21%', up: true },
-  totalDepartments: { value: 312, trend: '+15%', up: true },
-  totalHODs: { value: 384, trend: '+9%', up: true },
-  totalMentors: { value: 1248, trend: '+18%', up: true },
-  totalStudents: { value: 9840, trend: '+24%', up: true },
-  totalSubmissions: { value: 34720, trend: '+31%', up: true },
-  totalCredits: { value: 2184500, trend: '+27%', up: true },
+  totalColleges:    { value: 0, trend: '—', up: true },
+  activeColleges:   { value: 0, trend: '—', up: true },
+  inactiveColleges: { value: 0, trend: '—', up: false },
+  totalUsers:       { value: 0, trend: '—', up: true },
+  totalDepartments: { value: 0, trend: '—', up: true },
+  totalHODs:        { value: 0, trend: '—', up: true },
+  totalMentors:     { value: 0, trend: '—', up: true },
+  totalStudents:    { value: 0, trend: '—', up: true },
+  totalSubmissions: { value: 0, trend: '—', up: true },
+  totalCredits:     { value: 0, trend: '—', up: true },
 };
 
-const ACTIVE_COLLEGES = [
-  { name: 'VIT AP University', users: 2840, departments: 18, lastActivity: '2026-05-30', credits: 485200 },
-  { name: 'SRM AP University', users: 2210, departments: 15, lastActivity: '2026-05-29', credits: 392400 },
-  { name: 'KL University', users: 1980, departments: 14, lastActivity: '2026-05-30', credits: 361800 },
-  { name: 'GVP College of Engineering', users: 1650, departments: 12, lastActivity: '2026-05-28', credits: 298600 },
-  { name: 'GITAM University', users: 1420, departments: 11, lastActivity: '2026-05-30', credits: 254700 },
-  { name: 'Vignan University', users: 1180, departments: 10, lastActivity: '2026-05-27', credits: 213400 },
-];
+const ACTIVE_COLLEGES   = [];
+const INACTIVE_COLLEGES = [];
+const MONTHLY_GROWTH        = [];
+const SUBMISSION_ANALYTICS  = [];
+const COLLEGE_ACTIVITY_PIE  = [];
+const USER_ROLE_PIE         = [];
+const TOP_COLLEGES  = [];
+const TOP_STUDENTS  = [];
+const TOP_MENTORS   = [];
+const RECENT_ACTIVITY  = [];
+const PENDING_ACTIONS  = [];
+const COLLEGE_HEALTH   = [];
+const COLLEGE_BAR_DATA = [];
 
-const INACTIVE_COLLEGES = [
-  { name: 'Acharya Nagarjuna University', users: 320, lastLogin: '2026-04-12', lastSubmission: '2026-03-28', status: 'Suspended' },
-  { name: 'Andhra University', users: 480, lastLogin: '2026-04-25', lastSubmission: '2026-04-10', status: 'Inactive' },
-  { name: 'Jawaharlal Nehru Tech Univ', users: 290, lastLogin: '2026-03-30', lastSubmission: '2026-03-15', status: 'Suspended' },
-  { name: 'Sri Padmavathi Mahila Uni', users: 210, lastLogin: '2026-05-02', lastSubmission: '2026-04-20', status: 'Inactive' },
-];
 
-const MONTHLY_GROWTH = [
-  { month: 'Jan', colleges: 2, users: 420, submissions: 1840 },
-  { month: 'Feb', colleges: 3, users: 680, submissions: 2310 },
-  { month: 'Mar', colleges: 4, users: 940, submissions: 2890 },
-  { month: 'Apr', colleges: 2, users: 1120, submissions: 3240 },
-  { month: 'May', colleges: 5, users: 1480, submissions: 3980 },
-  { month: 'Jun', colleges: 3, users: 1240, submissions: 4120 },
-  { month: 'Jul', colleges: 6, users: 1840, submissions: 4680 },
-  { month: 'Aug', colleges: 4, users: 2010, submissions: 5120 },
-  { month: 'Sep', colleges: 5, users: 2240, submissions: 5480 },
-  { month: 'Oct', colleges: 7, users: 2480, submissions: 5940 },
-  { month: 'Nov', colleges: 3, users: 2140, submissions: 6210 },
-  { month: 'Dec', colleges: 4, users: 1980, submissions: 5840 },
-];
-
-const SUBMISSION_ANALYTICS = [
-  { month: 'Jan', approved: 1420, rejected: 420 },
-  { month: 'Feb', approved: 1840, rejected: 470 },
-  { month: 'Mar', approved: 2210, rejected: 680 },
-  { month: 'Apr', approved: 2480, rejected: 760 },
-  { month: 'May', approved: 3120, rejected: 860 },
-  { month: 'Jun', approved: 3280, rejected: 840 },
-  { month: 'Jul', approved: 3680, rejected: 1000 },
-  { month: 'Aug', approved: 4010, rejected: 1110 },
-  { month: 'Sep', approved: 4240, rejected: 1240 },
-  { month: 'Oct', approved: 4680, rejected: 1260 },
-  { month: 'Nov', approved: 4940, rejected: 1270 },
-  { month: 'Dec', approved: 4580, rejected: 1260 },
-];
-
-const COLLEGE_ACTIVITY_PIE = [
-  { name: 'VIT AP', value: 30, color: '#f97316' },
-  { name: 'SRM AP', value: 25, color: '#3b82f6' },
-  { name: 'KL University', value: 20, color: '#8b5cf6' },
-  { name: 'Others', value: 25, color: '#10b981' },
-];
-
-const USER_ROLE_PIE = [
-  { name: 'Students', value: 9840, color: '#f97316' },
-  { name: 'Mentors', value: 1248, color: '#3b82f6' },
-  { name: 'HODs', value: 384, color: '#8b5cf6' },
-  { name: 'College Admins', value: 48, color: '#10b981' },
-];
-
-const TOP_COLLEGES = [
-  { rank: 1, name: 'VIT AP University', credits: 485200, approved: 8420 },
-  { rank: 2, name: 'SRM AP University', credits: 392400, approved: 6840 },
-  { rank: 3, name: 'KL University', credits: 361800, approved: 6210 },
-  { rank: 4, name: 'GVP College of Engineering', credits: 298600, approved: 5180 },
-  { rank: 5, name: 'GITAM University', credits: 254700, approved: 4420 },
-  { rank: 6, name: 'Vignan University', credits: 213400, approved: 3840 },
-  { rank: 7, name: 'JNTUK', credits: 184200, approved: 3240 },
-  { rank: 8, name: 'Andhra University', credits: 162800, approved: 2980 },
-];
-
-const TOP_STUDENTS = [
-  { rank: 1, name: 'Arjun Reddy', college: 'VIT AP', credits: 2840, stars: 5 },
-  { rank: 2, name: 'Priya Sharma', college: 'SRM AP', credits: 2720, stars: 5 },
-  { rank: 3, name: 'Kiran Kumar', college: 'KL University', credits: 2610, stars: 5 },
-  { rank: 4, name: 'Sneha Patel', college: 'GVP', credits: 2480, stars: 4 },
-  { rank: 5, name: 'Rahul Mehta', college: 'GITAM', credits: 2340, stars: 4 },
-];
-
-const TOP_MENTORS = [
-  { rank: 1, name: 'Prof. Arun Vijay', department: 'CSE', reviews: 284, credits: 142800 },
-  { rank: 2, name: 'Dr. Kavitha Raj', department: 'IT', reviews: 248, credits: 124200 },
-  { rank: 3, name: 'Prof. Ravi Kumar', department: 'ECE', reviews: 212, credits: 108400 },
-  { rank: 4, name: 'Dr. Meena Sundari', department: 'AIML', reviews: 198, credits: 96800 },
-  { rank: 5, name: 'Prof. Suresh Babu', department: 'CSE', reviews: 184, credits: 91200 },
-];
-
-const RECENT_ACTIVITY = [
-  { id: 1, icon: 'upload', text: 'Arjun Reddy uploaded AWS Cloud Practitioner certification', time: '2 min ago', type: 'success' },
-  { id: 2, icon: 'approve', text: 'Prof. Arun Vijay approved internship submission for Priya Sharma', time: '8 min ago', type: 'success' },
-  { id: 3, icon: 'college', text: 'New college "Sri Venkateswara University" registered', time: '15 min ago', type: 'info' },
-  { id: 4, icon: 'hod', text: 'HOD Dr. Kavitha approved mentor request for Prof. Ravi', time: '32 min ago', type: 'success' },
-  { id: 5, icon: 'reject', text: 'Submission rejected: missing certificate documentation', time: '45 min ago', type: 'warning' },
-  { id: 6, icon: 'student', text: 'New student batch registered at VIT AP (48 students)', time: '1 hr ago', type: 'info' },
-  { id: 7, icon: 'upload', text: 'Kiran Kumar uploaded IEEE research paper', time: '1.5 hrs ago', type: 'success' },
-  { id: 8, icon: 'approve', text: 'Mentor approved hackathon achievement for Sneha Patel', time: '2 hrs ago', type: 'success' },
-];
-
-const PENDING_ACTIONS = [
-  { label: 'Pending HOD Requests', value: 12, color: '#f97316', icon: 'hod' },
-  { label: 'Pending Mentor Requests', value: 28, color: '#3b82f6', icon: 'mentor' },
-  { label: 'Pending Student Registrations', value: 84, color: '#8b5cf6', icon: 'student' },
-  { label: 'Pending Reviews', value: 142, color: '#10b981', icon: 'review' },
-];
-
-const COLLEGE_HEALTH = [
-  { name: 'VIT AP University', score: 96, status: 'Excellent', participation: '94%', submissions: 8420, credits: 485200 },
-  { name: 'SRM AP University', score: 88, status: 'Excellent', participation: '87%', submissions: 6840, credits: 392400 },
-  { name: 'KL University', score: 82, status: 'Good', participation: '81%', submissions: 6210, credits: 361800 },
-  { name: 'GVP Engineering', score: 74, status: 'Good', participation: '73%', submissions: 5180, credits: 298600 },
-  { name: 'GITAM University', score: 68, status: 'Average', participation: '66%', submissions: 4420, credits: 254700 },
-  { name: 'Acharya Uni', score: 32, status: 'Low Activity', participation: '28%', submissions: 820, credits: 48200 },
-];
-
-const COLLEGE_BAR_DATA = [
-  { name: 'VIT AP', credits: 485, submissions: 842, students: 284 },
-  { name: 'SRM AP', credits: 392, submissions: 684, students: 221 },
-  { name: 'KL Univ', credits: 362, submissions: 621, students: 198 },
-  { name: 'GVP', credits: 299, submissions: 518, students: 165 },
-  { name: 'GITAM', credits: 255, submissions: 442, students: 142 },
-  { name: 'Vignan', credits: 213, submissions: 384, students: 118 },
-  { name: 'JNTUK', credits: 184, submissions: 324, students: 98 },
-  { name: 'AU', credits: 163, submissions: 298, students: 88 },
-];
 
 // ─── Custom Tooltip ────────────────────────────────────────────────────────────
 const CustomTooltip = ({ active, payload, label }) => {
