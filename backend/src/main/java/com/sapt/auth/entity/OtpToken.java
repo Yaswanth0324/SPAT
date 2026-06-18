@@ -1,59 +1,18 @@
 package com.sapt.auth.entity;
 
-import jakarta.persistence.*;
-import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
-
-import java.time.LocalDateTime;
-
 /**
- * ============================================================
- * OtpToken - OTP Verification Token Entity
- * ============================================================
- * Stores OTPs generated for email verification and
- * password reset flows.
+ * @deprecated OTP tokens are no longer stored in a separate table.
  *
- * Table: otp_tokens
+ * OTP is now stored directly on the User entity:
+ *   - users.otp_code       → the 6-digit OTP
+ *   - users.otp_expires_at → expiry timestamp
  *
- * TODO (Auth Team):
- *  - Implement OTP generation in AuthService
- *  - Implement OTP validation logic
- *  - Clean up expired OTPs with a scheduled job
- * ============================================================
+ * After successful OTP verification both fields are set to null.
+ * A null otp_code signals "email verified".
+ *
+ * Use {@link User} and {@link com.sapt.auth.repository.UserRepository} instead.
  */
-@Entity
-@Table(name = "otp_tokens")
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
+@Deprecated(since = "2.0", forRemoval = true)
 public class OtpToken {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    /** The email this OTP was sent to */
-    @Column(nullable = false)
-    private String email;
-
-    /** The 6-digit OTP value */
-    @Column(nullable = false)
-    private String otpValue;
-
-    /** Purpose of OTP: EMAIL_VERIFICATION or PASSWORD_RESET */
-    @Column(nullable = false)
-    private String purpose;
-
-    /** Whether this OTP has already been used */
-    @Column(nullable = false)
-    private boolean used;
-
-    /** When this OTP expires */
-    @Column(nullable = false)
-    private LocalDateTime expiresAt;
-
-    @CreationTimestamp
-    @Column(updatable = false)
-    private LocalDateTime createdAt;
+    // REMOVED — OTP fields moved to com.sapt.auth.entity.User
 }

@@ -60,4 +60,22 @@ public class AuthDtos {
         @Size(min = 6, message = "Password must be at least 6 characters")
         private String newPassword;
     }
+
+    /** Simplified College DTO for registration dropdown */
+    @Data
+    @lombok.AllArgsConstructor
+    @lombok.NoArgsConstructor
+    public static class CollegeDto {
+        private String id;
+        private String name;
+    }
+
+    /** Simplified Mentor DTO for registration dropdown */
+    @Data
+    @lombok.AllArgsConstructor
+    @lombok.NoArgsConstructor
+    public static class MentorDto {
+        private String id;
+        private String name;
+    }
 }

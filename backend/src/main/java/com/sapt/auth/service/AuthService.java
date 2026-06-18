@@ -55,4 +55,18 @@ public interface AuthService {
      * For stateless JWT, this may simply return success (client clears token).
      */
     void logout(String token);
+
+    java.util.List<AuthDtos.CollegeDto> getAllColleges();
+
+    java.util.List<String> getDepartmentsByCollegeName(String collegeName);
+
+    java.util.List<AuthDtos.MentorDto> getMentors(String collegeName, String departmentName);
+
+    java.util.List<com.sapt.auth.entity.User> getUsersByCollegeAndRole(String collegeName, com.sapt.common.enums.UserRole role);
+
+    java.util.List<com.sapt.auth.entity.User> getUsersByMentorId(String mentorId);
+
+    void updateUserStatus(String userId, com.sapt.common.enums.UserStatus status);
+
+    com.sapt.auth.entity.User updateProfile(String userId, com.sapt.auth.dto.ProfileUpdateRequest request);
 }

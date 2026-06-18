@@ -1,52 +1,70 @@
 package com.sapt.security;
 
+import com.sapt.auth.entity.User;
+import com.sapt.auth.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
+
 /**
  * ============================================================
  * CustomUserDetailsService
  * ============================================================
- * Loads user-specific data for Spring Security authentication.
- * This is the bridge between your User entity (DB) and Spring Security.
+ * Loads the unified User entity from MySQL and bridges it
+ * with Spring Security for authentication.
  *
- * TODO (Auth Team):
- *  - Inject your User repository
- *  - Query the user by email (or username) from the database
- *  - Return a UserDetails object (can use Spring's User.builder())
- *  - Include roles/authorities for role-based access control
- *  - Throw UsernameNotFoundException if user not found
+ * Password stored in: users.password_hash
+ * Role authority format: "ROLE_<ROLE_NAME>"
+ *   e.g., ROLE_STUDENT, ROLE_MENTOR, ROLE_HOD, etc.
  * ============================================================
  */
+@Slf4j
 @Service
+@RequiredArgsConstructor
 public class CustomUserDetailsService implements UserDetailsService {
 
-    // TODO: Inject user repository
-    // private final AuthUserRepository authUserRepository;
+    private final UserRepository userRepository;
 
     /**
-     * Load user by username (email in SAPT context).
+     * Load user by email (used as the username in SPARK).
+     * Called by Spring Security during authentication.
      *
-     * TODO: Implement this method:
-     *  1. Query user by email from repository
-     *  2. If not found, throw new UsernameNotFoundException("User not found: " + username)
-     *  3. Return UserDetails with username, password, and roles
+     * NOTE: There is a naming conflict between:
+     *   - com.sapt.auth.entity.User   (our DB entity)
+     *   - org.springframework.security.core.userdetails.User (Spring Security builder)
+     * We use the fully-qualified Spring Security class below.
      */
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        // TODO: Implement user lookup from database
-        //
-        // AuthUser user = authUserRepository.findByEmail(username)
-        //     .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
-        //
-        // return org.springframework.security.core.userdetails.User.builder()
-        //     .username(user.getEmail())
-        //     .password(user.getPassword())
-        //     .roles(user.getRole().name())
-        //     .build();
 
-        throw new UsernameNotFoundException("CustomUserDetailsService not yet implemented");
+        User sparkUser = userRepository.findByEmail(username)
+                .orElseThrow(() -> {
+                    log.warn("User not found with email: {}", username);
+                    return new UsernameNotFoundException("User not found: " + username);
+                });
+
+        if (!sparkUser.isActive()) {
+            log.warn("Attempt to load deactivated account: {}", username);
+            throw new UsernameNotFoundException("Account is deactivated: " + username);
+        }
+
+        // Use fully-qualified Spring Security User builder to avoid naming conflict
+        return org.springframework.security.core.userdetails.User.builder()
+                .username(sparkUser.getEmail())
+                .password(sparkUser.getPasswordHash())           // BCrypt hash from users.password_hash
+                .authorities(Collections.singletonList(
+                        new SimpleGrantedAuthority("ROLE_" + sparkUser.getRole().name())
+                ))
+                .accountExpired(false)
+                .accountLocked(false)
+                .credentialsExpired(false)
+                .disabled(!sparkUser.isActive())
+                .build();
     }
 }

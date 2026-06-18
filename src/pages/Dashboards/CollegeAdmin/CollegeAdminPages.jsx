@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BookOpen, Users, CheckSquare, X, Check } from 'lucide-react';
 import { getUsers, updateUser, getSubmissions, getLogs } from '../../../utils/localStorage';
 import { ROLES } from '../../../utils/mockData';
 import { useAuth } from '../../../context/AuthContext';
 import { StatCard, Modal, Badge, useToast, EmptyState, Avatar } from '../../../components/ui/UIComponents';
+import { apiGetUsersByCollege, apiUpdateUserStatus } from '../../../utils/api';
 
 // ---- Departments Page ----
 export const CollegeAdminDepartments = () => {
@@ -188,12 +189,36 @@ export const CollegeAdminDepartments = () => {
 export const CollegeAdminHODRequests = () => {
   const { user } = useAuth();
   const { showToast, ToastComponent } = useToast();
-  const [users, setUsers] = useState(() => getUsers().filter(u => u.role === ROLES.HOD && u.college === user.college));
+  const [users, setUsers] = useState([]);
 
-  const handleAction = (id, action) => {
-    updateUser(id, { status: action });
-    setUsers(prev => prev.map(u => u.id === id ? { ...u, status: action } : u));
-    showToast(`HOD ${action === 'approved' ? 'approved' : 'rejected'} successfully`, action === 'approved' ? 'success' : 'error');
+  useEffect(() => {
+    let active = true;
+    const fetchHODs = async () => {
+      if (!user.college) return;
+      try {
+        const list = await apiGetUsersByCollege(user.college, 'HOD');
+        const normalized = list.map(u => ({
+          ...u,
+          status: u.status ? u.status.toLowerCase() : 'pending',
+          department: u.departmentName
+        }));
+        if (active) setUsers(normalized);
+      } catch (err) {
+        showToast('Failed to fetch HOD requests from server', 'error');
+      }
+    };
+    fetchHODs();
+    return () => { active = false; };
+  }, [user.college, showToast]);
+
+  const handleAction = async (id, action) => {
+    try {
+      await apiUpdateUserStatus(id, action.toUpperCase());
+      setUsers(prev => prev.map(u => u.id === id ? { ...u, status: action } : u));
+      showToast(`HOD ${action === 'approved' ? 'approved' : 'rejected'} successfully`, action === 'approved' ? 'success' : 'error');
+    } catch (err) {
+      showToast(err.message || 'Failed to update HOD status', 'error');
+    }
   };
 
   const handleSuccessionAction = (hodId, action) => {
@@ -227,9 +252,6 @@ export const CollegeAdminHODRequests = () => {
 
       // Save to localStorage
       localStorage.setItem('spark_users', JSON.stringify(allUsers));
-      
-      // Update local state to force re-render
-      setUsers(allUsers.filter(u => u.role === ROLES.HOD && u.college === user.college));
     }
   };
 

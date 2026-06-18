@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Users, FileText, CheckCircle, XCircle, Eye, Download, BookOpen, Link as LinkIcon, UserCheck } from 'lucide-react';
 import { getUsers, getSubmissionsByMentor, updateSubmission, getTotalCredits, getLogsByStudent, getSubmissions, getLogsByMentor, updateLog, updateUser } from '../../../utils/localStorage';
 import { ROLES } from '../../../utils/mockData';
 import { useAuth } from '../../../context/AuthContext';
 import { Modal, Badge, useToast, EmptyState, Avatar } from '../../../components/ui/UIComponents';
+import { apiGetUsersByMentor, apiUpdateUserStatus } from '../../../utils/api';
 
 
 // =====================================================================
@@ -26,7 +27,34 @@ const FilePreviewPlaceholder = ({ title, type }) => (
 export const MentorStudents = () => {
   const { user } = useAuth();
   const [selected, setSelected] = useState(null);
-  const students = getUsers().filter(u => u.role === ROLES.STUDENT && u.mentorId === user.id);
+  const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    const fetchStudents = async () => {
+      if (!user?.id) return;
+      try {
+        const list = await apiGetUsersByMentor(user.id);
+        const filtered = list
+          .filter(u => u.role === 'STUDENT' && u.status && u.status.toUpperCase() === 'APPROVED')
+          .map(u => ({
+            ...u,
+            status: 'approved',
+            college: u.collegeName,
+            department: u.departmentName
+          }));
+        if (active) {
+          setStudents(filtered);
+          setLoading(false);
+        }
+      } catch (err) {
+        setLoading(false);
+      }
+    };
+    fetchStudents();
+    return () => { active = false; };
+  }, [user?.id]);
 
   return (
     <div className="animate-fade-in">
@@ -35,7 +63,9 @@ export const MentorStudents = () => {
         <p className="text-slate-500 dark:text-slate-400 mt-1">{students.length} students under your mentorship</p>
       </div>
 
-      {students.length === 0 ? (
+      {loading ? (
+        <div className="card flex items-center justify-center p-8">Loading students...</div>
+      ) : students.length === 0 ? (
         <div className="card"><EmptyState icon={<Users className="w-12 h-12" />} title="No students assigned" /></div>
       ) : (
         <div className="card p-0 overflow-hidden">
@@ -640,24 +670,57 @@ export const MentorLogs = () => {
 export const MentorStudentApprovals = () => {
   const { user } = useAuth();
   const { showToast, ToastComponent } = useToast();
-  const [students, setStudents] = useState(() =>
-    getUsers().filter(u => u.role === ROLES.STUDENT && u.mentorId === user.id && u.status === 'pending')
-  );
+  const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [approvedCount, setApprovedCount] = useState(0);
   const [rejectedCount, setRejectedCount] = useState(0);
 
-  const handleApprove = (studentId) => {
-    updateUser(studentId, { status: 'approved' });
-    setStudents(prev => prev.filter(s => s.id !== studentId));
-    setApprovedCount(c => c + 1);
-    showToast('Student approved! They can now login.', 'success');
+  useEffect(() => {
+    let active = true;
+    const fetchStudents = async () => {
+      if (!user?.id) return;
+      try {
+        const list = await apiGetUsersByMentor(user.id);
+        const filtered = list
+          .filter(u => u.role === 'STUDENT' && u.status && u.status.toUpperCase() === 'PENDING')
+          .map(u => ({
+            ...u,
+            status: 'pending',
+            college: u.collegeName,
+            department: u.departmentName
+          }));
+        if (active) {
+          setStudents(filtered);
+          setLoading(false);
+        }
+      } catch (err) {
+        if (active) setLoading(false);
+      }
+    };
+    fetchStudents();
+    return () => { active = false; };
+  }, [user?.id]);
+
+  const handleApprove = async (studentId) => {
+    try {
+      await apiUpdateUserStatus(studentId, 'APPROVED');
+      setStudents(prev => prev.filter(s => s.id !== studentId));
+      setApprovedCount(c => c + 1);
+      showToast('Student approved! They can now login.', 'success');
+    } catch (err) {
+      showToast(err.message || 'Failed to approve student', 'error');
+    }
   };
 
-  const handleReject = (studentId) => {
-    updateUser(studentId, { status: 'rejected' });
-    setStudents(prev => prev.filter(s => s.id !== studentId));
-    setRejectedCount(c => c + 1);
-    showToast('Student registration rejected.', 'error');
+  const handleReject = async (studentId) => {
+    try {
+      await apiUpdateUserStatus(studentId, 'REJECTED');
+      setStudents(prev => prev.filter(s => s.id !== studentId));
+      setRejectedCount(c => c + 1);
+      showToast('Student registration rejected.', 'error');
+    } catch (err) {
+      showToast(err.message || 'Failed to reject student', 'error');
+    }
   };
 
   return (
@@ -686,7 +749,9 @@ export const MentorStudentApprovals = () => {
         )}
       </div>
 
-      {students.length === 0 ? (
+      {loading ? (
+        <div className="card flex items-center justify-center p-8">Loading student registrations...</div>
+      ) : students.length === 0 ? (
         <div className="card">
           <EmptyState
             icon={<UserCheck className="w-12 h-12" />}

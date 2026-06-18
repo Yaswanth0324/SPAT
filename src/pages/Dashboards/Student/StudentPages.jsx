@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { UploadCloud, BookOpen, BarChart2, User, Plus, Download, FileText, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
@@ -6,6 +6,7 @@ import { addSubmission, getSubmissionsByStudent, addLog, getLogsByStudent, getTo
 import { ACTIVITY_TYPES, ACTIVITY_CATEGORIES, CREDIT_MAP, getStars, getAchievementBadge } from '../../../utils/mockData';
 import { StatCard, Badge, useToast, EmptyState, Avatar, StarsDisplay } from '../../../components/ui/UIComponents';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+import { apiUpdateProfile, apiGetMentors } from '../../../utils/api';
 
 // ---- Submission Form ----
 export const StudentSubmission = () => {
@@ -721,7 +722,7 @@ export const StudentMetrics = () => {
 // ---- Profile ----
 // ---- Profile ----
 export const StudentProfile = () => {
-  const { user, refreshUser } = useAuth();
+  const { user, login } = useAuth();
   const { showToast, ToastComponent } = useToast();
   const [editMode, setEditMode] = useState(false);
   const [editPass, setEditPass] = useState(false);
@@ -743,7 +744,17 @@ export const StudentProfile = () => {
   const stars = getStars(totalCredits);
   const badge = getAchievementBadge(stars);
 
-  const allMentors = getUsers().filter(u => u.role === 'MENTOR' && u.status === 'approved');
+  const [allMentors, setAllMentors] = useState([]);
+
+  useEffect(() => {
+    let active = true;
+    if (user.college && user.department) {
+      apiGetMentors(user.college, user.department).then(list => {
+        if (active) setAllMentors(list);
+      });
+    }
+    return () => { active = false; };
+  }, [user.college, user.department]);
 
   const handleAvatarChange = (e) => {
     const file = e.target.files[0];
@@ -757,55 +768,55 @@ export const StudentProfile = () => {
     }
 
     const reader = new FileReader();
-    reader.onload = (ev) => {
+    reader.onload = async (ev) => {
       const dataUrl = ev.target.result;
-      setAvatar(dataUrl);
-      updateUser(user.id, { avatar: dataUrl });
-      refreshUser();
-      showToast('ID card photo uploaded successfully!', 'success');
+      try {
+        const res = await apiUpdateProfile(user.id, { avatar: dataUrl });
+        setAvatar(dataUrl);
+        login(res.user);
+        showToast('ID card photo uploaded successfully!', 'success');
+      } catch (err) {
+        showToast(err.message || 'Failed to upload image', 'error');
+      }
     };
     reader.readAsDataURL(file);
   };
 
-  const handleSaveProfile = () => {
+  const handleSaveProfile = async () => {
     if (!editForm.name.trim()) {
       showToast('Full name is required.', 'error');
       return;
     }
 
-    const oldMentorId = user.mentorId;
-    const newMentorId = editForm.mentorId;
+    try {
+      const res = await apiUpdateProfile(user.id, {
+        name: editForm.name,
+        email: editForm.email,
+        phone: editForm.phone,
+        mentorId: editForm.mentorId,
+        mentorName: editForm.mentorName,
+      });
 
-    updateUser(user.id, {
-      name: editForm.name,
-      email: editForm.email,
-      college: editForm.college,
-      department: editForm.department,
-      rollNo: editForm.rollNo,
-      phone: editForm.phone,
-      mentorId: editForm.mentorId,
-      mentorName: editForm.mentorName,
-    });
-
-    // If mentor has changed, update old submissions to the new mentor
-    if (oldMentorId !== newMentorId) {
-      const allSubs = getSubmissions();
-      const updatedSubs = allSubs.map(s => s.studentId === user.id ? { ...s, mentorId: newMentorId } : s);
-      saveSubmissions(updatedSubs);
+      login(res.user);
+      showToast('Profile updated successfully!', 'success');
+      setEditMode(false);
+    } catch (err) {
+      showToast(err.message || 'Failed to update profile', 'error');
     }
-
-    refreshUser();
-    showToast('Profile updated successfully!', 'success');
-    setEditMode(false);
   };
 
-  const handlePasswordChange = () => {
+  const handlePasswordChange = async () => {
     if (password.new.length < 6) { showToast('Password min 6 chars', 'error'); return; }
     if (password.new !== password.confirm) { showToast('Passwords do not match', 'error'); return; }
-    updateUser(user.id, { password: password.new });
-    showToast('Password updated!', 'success');
-    setEditPass(false);
-    setPassword({ new: '', confirm: '' });
+    try {
+      const res = await apiUpdateProfile(user.id, { password: password.new });
+      login(res.user);
+      showToast('Password updated!', 'success');
+      setEditPass(false);
+      setPassword({ new: '', confirm: '' });
+    } catch (err) {
+      showToast(err.message || 'Failed to update password', 'error');
+    }
   };
 
   return (

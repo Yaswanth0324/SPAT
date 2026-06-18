@@ -13,26 +13,31 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfigurationSource;
 
 /**
  * ============================================================
  * SecurityConfig - Spring Security Configuration
  * ============================================================
  * Configures:
- *  - HTTP security (CSRF, session, endpoint access rules)
+ *  - HTTP security (CSRF disabled, stateless sessions, CORS)
+ *  - Endpoint access rules per role
  *  - JWT filter registration
  *  - Password encoding (BCrypt)
  *  - Authentication provider setup
  *
- * TODO (Auth Team):
- *  - Define which endpoints are public (permitAll)
- *  - Define which endpoints require specific roles
- *  - Wire JwtAuthFilter before the default auth filter
- *  - Configure CORS properly for your frontend origin
+ * Public endpoints (no token required):
+ *   POST /api/auth/login
+ *   POST /api/auth/register
+ *   POST /api/auth/otp/send
+ *   POST /api/auth/otp/verify
+ *   POST /api/auth/password/reset
+ *
+ * All other endpoints require a valid JWT Bearer token.
+ * Role-based access is enforced via @PreAuthorize in controllers.
  * ============================================================
  */
 @Configuration
@@ -44,31 +49,40 @@ public class SecurityConfig {
     private final JwtAuthFilter jwtAuthFilter;
     private final UserDetailsService userDetailsService;
     private final PasswordEncoder passwordEncoder;
+    /** Injected from CorsConfig — avoids duplicate bean definition */
+    private final CorsConfigurationSource corsConfigurationSource;
 
     /**
      * Main security filter chain configuration.
-     *
-     * TODO: Configure the following:
-     *  - CSRF: disable (REST API is stateless)
-     *  - CORS: configure allowed origins from application.properties
-     *  - Session: STATELESS (JWT based)
-     *  - Public endpoints: /api/auth/**, /api/public/**
-     *  - Protected endpoints: define role-based access per module
-     *  - Add jwtAuthFilter before UsernamePasswordAuthenticationFilter
+     * - CSRF disabled (REST API is stateless)
+     * - Sessions are STATELESS (JWT-based)
+     * - Auth endpoints are public; all others require authentication
      */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        // TODO: Replace this placeholder with actual security rules
         http
             .csrf(csrf -> csrf.disable())
+            .cors(cors -> cors.configurationSource(corsConfigurationSource))
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                // TODO: Define your public and protected routes below
-                // .requestMatchers("/api/auth/**").permitAll()
-                // .requestMatchers("/api/admin/**").hasRole("SYSTEM_ADMIN")
-                // .requestMatchers("/api/student/**").hasRole("STUDENT")
-                .anyRequest().permitAll() // PLACEHOLDER - change to .authenticated() after implementing auth
+                // ---- Public Auth Endpoints ----
+                // NOTE: context-path is /api, so Spring Security sees paths WITHOUT /api prefix
+                .requestMatchers(
+                    "/auth/login",
+                    "/auth/register",
+                    "/auth/otp/send",
+                    "/auth/otp/verify",
+                    "/auth/password/reset",
+                    "/auth/logout",
+                    "/auth/colleges",
+                    "/auth/colleges/**",
+                    "/auth/mentors"
+                ).permitAll()
+
+                // ---- All other requests require authentication ----
+                // Role-specific access is enforced via @PreAuthorize in controllers
+                .anyRequest().authenticated()
             )
             .authenticationProvider(authenticationProvider())
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
@@ -77,7 +91,7 @@ public class SecurityConfig {
     }
 
     /**
-     * Authentication provider — uses UserDetailsService + PasswordEncoder.
+     * Authentication provider — uses CustomUserDetailsService + BCryptPasswordEncoder.
      */
     @Bean
     public AuthenticationProvider authenticationProvider() {

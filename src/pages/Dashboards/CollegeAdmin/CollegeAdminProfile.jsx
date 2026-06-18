@@ -3,9 +3,11 @@ import { UploadCloud, Shield, Building2, Key, Mail, Phone, MapPin, User, Save } 
 import { useAuth } from '../../../context/AuthContext';
 import { getUsers, saveUsers, getColleges, saveColleges, updateUser } from '../../../utils/localStorage';
 import { StatCard, Badge, useToast, Avatar } from '../../../components/ui/UIComponents';
+import { apiUpdateProfile } from '../../../utils/api';
+
 
 export const CollegeAdminProfile = () => {
-  const { user, refreshUser } = useAuth();
+  const { user, login } = useAuth();
   const { showToast, ToastComponent } = useToast();
 
   const [loading, setLoading] = useState(false);
@@ -48,31 +50,34 @@ export const CollegeAdminProfile = () => {
     }
 
     const reader = new FileReader();
-    reader.onload = (ev) => {
+    reader.onload = async (ev) => {
       const dataUrl = ev.target.result;
-      setAvatar(dataUrl);
-      // Update in user object
-      updateUser(user.id, { avatar: dataUrl });
-      
-      // Refresh context
-      refreshUser();
-      showToast('Profile image updated successfully!', 'success');
+      try {
+        const res = await apiUpdateProfile(user.id, { avatar: dataUrl });
+        setAvatar(dataUrl);
+        login(res.user);
+        showToast('Profile image updated successfully!', 'success');
+      } catch (err) {
+        showToast(err.message || 'Failed to upload image', 'error');
+      }
     };
     reader.readAsDataURL(file);
   };
 
   // Submit Admin & College Details
-  const handleSaveDetails = (e) => {
+  const handleSaveDetails = async (e) => {
     e.preventDefault();
     setLoading(true);
 
-    setTimeout(() => {
-      // 1. Update user account details in localStorage
-      updateUser(user.id, {
+    try {
+      // 1. Update user account details in MySQL DB
+      const res = await apiUpdateProfile(user.id, {
         name: adminForm.name,
         email: adminForm.email,
         phone: adminForm.phone,
       });
+
+      login(res.user);
 
       // 2. Update College Details in localStorage (reflects everywhere)
       const currentColleges = getColleges();
@@ -93,24 +98,21 @@ export const CollegeAdminProfile = () => {
       });
       saveColleges(updatedColleges);
 
-      refreshUser();
-      setLoading(false);
       showToast('Profile and institutional details updated successfully!', 'success');
-    }, 600);
+    } catch (err) {
+      showToast(err.message || 'Failed to save details', 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Submit Password Change
-  const handlePasswordChange = (e) => {
+  const handlePasswordChange = async (e) => {
     e.preventDefault();
     
     // Validations
     if (!passwordForm.currentPassword) {
       showToast('Please enter your current password.', 'warning');
-      return;
-    }
-
-    if (passwordForm.currentPassword !== user.password) {
-      showToast('Incorrect current password! Please verify.', 'error');
       return;
     }
 
@@ -124,25 +126,34 @@ export const CollegeAdminProfile = () => {
       return;
     }
 
-    // Save password
-    updateUser(user.id, { password: passwordForm.newPassword });
-    
-    // Also update in colleges list if stored there
-    const currentColleges = getColleges();
-    const updatedColleges = currentColleges.map(col => {
-      if (col.name === user.college) {
-        return {
-          ...col,
-          password: passwordForm.newPassword,
-        };
-      }
-      return col;
-    });
-    saveColleges(updatedColleges);
+    try {
+      // Save password in MySQL DB
+      const res = await apiUpdateProfile(user.id, {
+        password: passwordForm.newPassword,
+        currentPassword: passwordForm.currentPassword
+      });
 
-    showToast('Password updated successfully!', 'success');
-    setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-    setIsChangingPassword(false);
+      login(res.user);
+      
+      // Also update in colleges list if stored there
+      const currentColleges = getColleges();
+      const updatedColleges = currentColleges.map(col => {
+        if (col.name === user.college) {
+          return {
+            ...col,
+            password: passwordForm.newPassword,
+          };
+        }
+        return col;
+      });
+      saveColleges(updatedColleges);
+
+      showToast('Password updated successfully!', 'success');
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      setIsChangingPassword(false);
+    } catch (err) {
+      showToast(err.message || 'Failed to update password', 'error');
+    }
   };
 
   return (

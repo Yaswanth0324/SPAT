@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Users, CheckSquare, X, Check, Phone, Mail, TrendingUp, BarChart2, Clock } from 'lucide-react';
 import { getUsers, updateUser, getSubmissions } from '../../../utils/localStorage';
 import { ROLES } from '../../../utils/mockData';
 import { useAuth } from '../../../context/AuthContext';
 import { StatCard, Modal, Badge, useToast, EmptyState, Avatar } from '../../../components/ui/UIComponents';
+import { apiGetUsersByCollege, apiUpdateUserStatus } from '../../../utils/api';
 
 const getMentorStats = (mentorId) => {
   const all = getSubmissions().filter(s => s.mentorId === mentorId);
@@ -19,14 +20,42 @@ const getMentorStats = (mentorId) => {
 export const HODMentorApprovals = () => {
   const { user } = useAuth();
   const { showToast, ToastComponent } = useToast();
-  const [mentors, setMentors] = useState(() =>
-    getUsers().filter(u => u.role === ROLES.MENTOR && u.college === user.college && u.department === user.department)
-  );
+  const [mentors, setMentors] = useState([]);
 
-  const handleAction = (id, action) => {
-    updateUser(id, { status: action });
-    setMentors(prev => prev.map(m => m.id === id ? { ...m, status: action } : m));
-    showToast(`Mentor ${action === 'approved' ? 'approved ✓' : 'rejected'}`, action === 'approved' ? 'success' : 'error');
+  useEffect(() => {
+    let active = true;
+    const fetchMentors = async () => {
+      if (!user.college || !user.department) return;
+      try {
+        const list = await apiGetUsersByCollege(user.college, 'MENTOR');
+        const filtered = list
+          .filter(u => {
+            const uDept = (u.departmentName || '').trim().toLowerCase();
+            const HODDept = (user.department || '').trim().toLowerCase();
+            return uDept && HODDept && uDept === HODDept;
+          })
+          .map(u => ({
+            ...u,
+            status: u.status ? u.status.toLowerCase() : 'pending',
+            department: u.departmentName
+          }));
+        if (active) setMentors(filtered);
+      } catch (err) {
+        showToast('Failed to fetch mentors from server', 'error');
+      }
+    };
+    fetchMentors();
+    return () => { active = false; };
+  }, [user.college, user.department, showToast]);
+
+  const handleAction = async (id, action) => {
+    try {
+      await apiUpdateUserStatus(id, action.toUpperCase());
+      setMentors(prev => prev.map(m => m.id === id ? { ...m, status: action } : m));
+      showToast(`Mentor ${action === 'approved' ? 'approved ✓' : 'rejected'}`, action === 'approved' ? 'success' : 'error');
+    } catch (err) {
+      showToast(err.message || 'Failed to update mentor status', 'error');
+    }
   };
 
   const handleSuccessionAction = (mentorId, action) => {
@@ -58,9 +87,6 @@ export const HODMentorApprovals = () => {
 
       // Save to localStorage
       localStorage.setItem('spark_users', JSON.stringify(allUsers));
-      
-      // Update local state to force re-render
-      setMentors(allUsers.filter(u => u.role === ROLES.MENTOR && u.college === user.college && u.department === user.department));
     }
   };
 
@@ -152,10 +178,46 @@ export const HODMentorApprovals = () => {
 export const HODMentors = () => {
   const { user } = useAuth();
   const [selected, setSelected] = useState(null);
-  const mentors = getUsers().filter(
-    u => u.role === ROLES.MENTOR && u.college === user.college && u.department === user.department && u.status === 'approved'
-  );
-  const allStudents = getUsers().filter(u => u.role === ROLES.STUDENT);
+  const [mentors, setMentors] = useState([]);
+  const [allStudents, setAllStudents] = useState([]);
+
+  useEffect(() => {
+    let active = true;
+    const fetchMentors = async () => {
+      if (!user.college || !user.department) return;
+      try {
+        const list = await apiGetUsersByCollege(user.college, 'MENTOR');
+        const filtered = list
+          .filter(u => {
+            const uDept = (u.departmentName || '').trim().toLowerCase();
+            const HODDept = (user.department || '').trim().toLowerCase();
+            const isApproved = u.status && u.status.toUpperCase() === 'APPROVED';
+            return uDept && HODDept && uDept === HODDept && isApproved;
+          })
+          .map(u => ({
+            ...u,
+            status: 'approved',
+            department: u.departmentName
+          }));
+        if (active) setMentors(filtered);
+      } catch (err) {}
+    };
+    fetchMentors();
+    return () => { active = false; };
+  }, [user.college, user.department]);
+
+  useEffect(() => {
+    let active = true;
+    const fetchStudents = async () => {
+      if (!user.college) return;
+      try {
+        const list = await apiGetUsersByCollege(user.college, 'STUDENT');
+        if (active) setAllStudents(list);
+      } catch (err) {}
+    };
+    fetchStudents();
+    return () => { active = false; };
+  }, [user.college]);
 
   const selectedStats = selected ? getMentorStats(selected.id) : null;
 
