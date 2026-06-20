@@ -86,7 +86,7 @@ export const HODMentorApprovals = () => {
       }
 
       // Save to localStorage
-      localStorage.setItem('spark_users', JSON.stringify(allUsers));
+      localStorage.setItem('spat_users', JSON.stringify(allUsers));
     }
   };
 

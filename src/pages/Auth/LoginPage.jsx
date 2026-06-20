@@ -67,7 +67,7 @@ export const AdminLoginPage = () => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="label-field">Admin Email</label>
-            <input type="email" className="input-field" placeholder="admin@spark.edu" value={form.email} onChange={e => setForm({...form, email: e.target.value})} required />
+            <input type="email" className="input-field" placeholder="admin@spat.edu" value={form.email} onChange={e => setForm({...form, email: e.target.value})} required />
           </div>
           <div>
             <label className="label-field">Admin ID</label>

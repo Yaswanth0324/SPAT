@@ -1,37 +1,14 @@
 package com.sapt.collegeadmin.entity;
 
-import jakarta.persistence.*;
-import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
-import java.time.LocalDateTime;
-
 /**
- * CollegeAdmin - College Administrator MySQL Entity.
- * TODO (CollegeAdmin Team): Add college reference, permissions, etc.
+ * @deprecated The separate `college_admins` table no longer exists.
+ *
+ * All college admin data is now stored in the unified `users` table
+ * with role = COLLEGE_ADMIN.
+ *
+ * Use {@link com.sapt.auth.entity.User} with role filter COLLEGE_ADMIN.
  */
-@Entity
-@Table(name = "college_admins")
-@Data @Builder @NoArgsConstructor @AllArgsConstructor
+@Deprecated(since = "2.0", forRemoval = true)
 public class CollegeAdmin {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @Column(nullable = false, unique = true)
-    private Long authUserId;
-
-    private String fullName;
-    private String employeeId;
-    private Long collegeId;
-
-    @Column(nullable = false)
-    private boolean active = true;
-
-    @CreationTimestamp @Column(updatable = false)
-    private LocalDateTime createdAt;
-
-    @UpdateTimestamp
-    private LocalDateTime updatedAt;
+    // REMOVED — use com.sapt.auth.entity.User (role = COLLEGE_ADMIN)
 }

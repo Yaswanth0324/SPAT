@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
  * TODO (SystemAdmin Team): Add endpoints for college, user, and system management.
  */
 @RestController
-@RequestMapping("/api/system-admin")
+@RequestMapping("/system-admin")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('SYSTEM_ADMIN')")
 public class SystemAdminController {
@@ -22,3 +22,4 @@ public class SystemAdminController {
     // TODO: @GetMapping("/stats") getSystemStats()
     // TODO: @PutMapping("/users/{id}/deactivate") deactivateUser()
 }
+

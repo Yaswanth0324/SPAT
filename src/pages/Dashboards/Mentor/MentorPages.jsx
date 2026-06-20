@@ -155,10 +155,10 @@ export const MentorStudents = () => {
                         <body>
                           <div class="header">
                             <div class="logo-container">
-                              <img src="/spark-logo1.png" style="width: 32px; height: 32px; object-fit: contain; border-radius: 8px;" />
-                              <span class="logo-text">SPARK</span>
+                              <img src="/spat-logo1.png" style="width: 32px; height: 32px; object-fit: contain; border-radius: 8px;" />
+                              <span class="logo-text">SPAT</span>
                             </div>
-                            <div class="college-name">${selected.college || 'SPARK Partner Institute'}</div>
+                            <div class="college-name">${selected.college || 'SPAT Partner Institute'}</div>
                           </div>
                           <div class="details">
                             <p><strong>Student Name:</strong> ${selected.name}</p>
@@ -230,10 +230,10 @@ export const MentorStudents = () => {
                         <body>
                           <div class="header">
                             <div class="logo-container">
-                              <img src="/spark-logo1.png" style="width: 32px; height: 32px; object-fit: contain; border-radius: 8px;" />
-                              <span class="logo-text">SPARK</span>
+                              <img src="/spat-logo1.png" style="width: 32px; height: 32px; object-fit: contain; border-radius: 8px;" />
+                              <span class="logo-text">SPAT</span>
                             </div>
-                            <div class="college-name">${selected.college || 'SPARK Partner Institute'}</div>
+                            <div class="college-name">${selected.college || 'SPAT Partner Institute'}</div>
                           </div>
                           <div class="details">
                             <p><strong>Student Name:</strong> ${selected.name}</p>

@@ -5,12 +5,13 @@ import com.fasterxml.jackson.annotation.JsonValue;
 
 /**
  * ============================================================
- * SubmissionStatus — Activity Submission Lifecycle States
+ * UserStatus — Account Approval Lifecycle States
  * ============================================================
+ * Tracks a user profile's registration/approval status.
+ *
  * Workflow:
- *   Student submits  → PENDING
- *   Mentor approves  → APPROVED   (awardedCredits set by mentor)
- *   Mentor rejects   → REJECTED   (awardedCredits must be 0 — DB constraint)
+ *   PENDING  → APPROVED  (mentor approves student / admin creates staff)
+ *   PENDING  → REJECTED  (mentor rejects student)
  *
  * JSON Serialization:
  *   Serialized as LOWERCASE strings for frontend compatibility:
@@ -18,17 +19,25 @@ import com.fasterxml.jackson.annotation.JsonValue;
  *     APPROVED → "approved"
  *     REJECTED → "rejected"
  *
- *   Frontend checks: sub.status === 'pending' / 'approved' / 'rejected'
+ *   Frontend checks (all lowercase):
+ *     u.status === 'approved'
+ *     u.status === 'pending'
+ *     u.status === 'rejected'
+ *     res.user.status === 'pending'
  *
  * DB Storage:
- *   Stored as uppercase string via @Enumerated(EnumType.STRING)
- *   so it matches the DB ENUM('pending','approved','rejected') values.
- *   Note: DB ENUM values are lowercase — ensure DDL uses lowercase.
+ *   Stored as uppercase string via @Enumerated(EnumType.STRING).
  * ============================================================
  */
-public enum SubmissionStatus {
+public enum UserStatus {
+
+    /** Registered but not yet approved by supervisor */
     PENDING,
+
+    /** Approved — user may log in and use the system */
     APPROVED,
+
+    /** Rejected — account remains inactive */
     REJECTED;
 
     /**
@@ -41,12 +50,12 @@ public enum SubmissionStatus {
     }
 
     /**
-     * Deserialize from either UPPERCASE or lowercase JSON string.
+     * Deserialize from UPPERCASE or lowercase JSON string.
      * Accepts: "PENDING", "pending", "Pending" etc.
      */
     @JsonCreator
-    public static SubmissionStatus fromJson(String value) {
+    public static UserStatus fromJson(String value) {
         if (value == null) return null;
-        return SubmissionStatus.valueOf(value.toUpperCase());
+        return UserStatus.valueOf(value.toUpperCase());
     }
 }

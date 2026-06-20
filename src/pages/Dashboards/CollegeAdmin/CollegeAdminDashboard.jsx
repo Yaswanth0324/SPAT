@@ -418,7 +418,7 @@ export const CollegeAdminDashboard = () => {
     printWindow.document.write(`
       <html>
         <head>
-          <title>${collegeName} - SPARK Placement Report</title>
+          <title>${collegeName} - SPAT Placement Report</title>
           <style>
             body { font-family: 'Segoe UI', system-ui, sans-serif; color: #1e293b; padding: 40px; line-height: 1.5; background: #ffffff; }
             .header-container { display: flex; align-items: center; justify-content: space-between; border-bottom: 4px solid #ea580c; padding-bottom: 20px; margin-bottom: 30px; }
@@ -448,8 +448,8 @@ export const CollegeAdminDashboard = () => {
           </div>
           <div class="header-container">
             <div>
-              <span class="logo-text">SPARK</span>
-              <div style="font-size: 10px; font-weight: 700; color: #64748b; margin-top: 2px; letter-spacing: 0.5px;">STUDENT PERFORMANCE ARCHIVE & KNOWLEDGE</div>
+              <span class="logo-text">SPAT</span>
+              <div style="font-size: 10px; font-weight: 700; color: #64748b; margin-top: 2px; letter-spacing: 0.5px;">STUDENT PERFORMANCE ARCHIVE & TRACKER</div>
             </div>
             <div class="college-title">
               ${collegeName}
@@ -554,7 +554,7 @@ export const CollegeAdminDashboard = () => {
           </table>
 
           <div class="footer">
-            Generated on ${new Date().toLocaleDateString()} @ ${new Date().toLocaleTimeString()} · SPARK Secure Report System
+            Generated on ${new Date().toLocaleDateString()} @ ${new Date().toLocaleTimeString()} · SPAT Secure Report System
           </div>
           
           <script>
@@ -593,7 +593,7 @@ export const CollegeAdminDashboard = () => {
               <Calendar className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-sm font-bold text-slate-800 dark:text-white leading-none">SPARK Institutional Contract License</p>
+              <p className="text-sm font-bold text-slate-800 dark:text-white leading-none">SPAT Institutional Contract License</p>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Authorized access period for {user?.college}</p>
             </div>
           </div>

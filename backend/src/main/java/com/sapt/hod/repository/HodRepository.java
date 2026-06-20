@@ -1,15 +1,16 @@
 package com.sapt.hod.repository;
 
-import com.sapt.hod.entity.Hod;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
-import java.util.List;
-import java.util.Optional;
-
-/** HodRepository - TODO (HOD Team): Add custom query methods. */
-@Repository
-public interface HodRepository extends JpaRepository<Hod, Long> {
-    Optional<Hod> findByAuthUserId(Long authUserId);
-    List<Hod> findByCollegeId(Long collegeId);
-    List<Hod> findByDepartment(String department);
+/**
+ * @deprecated The `hods` table no longer exists as a separate entity.
+ *
+ * All HOD data is in the unified `users` table (role = HOD).
+ * Use {@link com.sapt.auth.repository.UserRepository} instead:
+ *
+ *   userRepository.findByRole(UserRole.HOD)
+ *   userRepository.findByCollegeIdAndRole(collegeId, UserRole.HOD)
+ *   userRepository.findByDepartmentIdAndRole(departmentId, UserRole.HOD)
+ */
+@Deprecated(since = "2.0", forRemoval = true)
+public interface HodRepository {
+    // REMOVED — use com.sapt.auth.repository.UserRepository
 }

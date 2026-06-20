@@ -300,8 +300,8 @@ export const MentorDashboard = () => {
         <body>
           <div class="header">
             <div class="logo-container">
-              <img src="/spark-logo1.png" style="width: 32px; height: 32px; object-fit: contain; border-radius: 8px;" />
-              <span class="logo-text">SPARK</span>
+              <img src="/spat-logo1.png" style="width: 32px; height: 32px; object-fit: contain; border-radius: 8px;" />
+              <span class="logo-text">SPAT</span>
             </div>
             <div class="college-name">${user.college}</div>
           </div>
@@ -386,7 +386,7 @@ export const MentorDashboard = () => {
 
           <div class="footer">
             <div>
-              <p style="margin: 0;">Compiled automatically via SPARK student portal logs.</p>
+              <p style="margin: 0;">Compiled automatically via SPAT student portal logs.</p>
               <p style="margin: 4px 0 0 0;">All achievements reviewed and approved under college bylaws.</p>
             </div>
             <div>

@@ -212,7 +212,7 @@ const RegisterPage = () => {
             <GraduationCap className="w-8 h-8 text-white" />
           </div>
           <h1 className="font-display text-2xl font-bold text-slate-900 dark:text-white">Create Account</h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Join SPARK today</p>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Join SPAT today</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">

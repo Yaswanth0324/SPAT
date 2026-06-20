@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
  * TODO (CollegeAdmin Team): Add endpoints for HOD/Mentor management, college stats.
  */
 @RestController
-@RequestMapping("/api/college-admin")
+@RequestMapping("/college-admin")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('COLLEGE_ADMIN')")
 public class CollegeAdminController {
@@ -22,3 +22,4 @@ public class CollegeAdminController {
     // TODO: @GetMapping("/hods") getAllHods()
     // TODO: @GetMapping("/stats") getCollegeStats()
 }
+

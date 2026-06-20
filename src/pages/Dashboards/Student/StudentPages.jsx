@@ -444,10 +444,10 @@ export const StudentLogs = () => {
                     <body>
                       <div class="header">
                         <div class="logo-container" style="display: flex; align-items: center; gap: 10px;">
-                          <img src="/spark-logo1.png" style="width: 32px; height: 32px; object-fit: contain; border-radius: 8px;" />
-                          <span class="logo-text" style="font-size: 26px; font-weight: 900; color: #ea580c; font-family: 'Outfit', sans-serif; letter-spacing: -0.5px;">SPARK</span>
+                          <img src="/spat-logo1.png" style="width: 32px; height: 32px; object-fit: contain; border-radius: 8px;" />
+                          <span class="logo-text" style="font-size: 26px; font-weight: 900; color: #ea580c; font-family: 'Outfit', sans-serif; letter-spacing: -0.5px;">SPAT</span>
                         </div>
-                        <div class="college-name">${user.college || 'SPARK Partner Institute'}</div>
+                        <div class="college-name">${user.college || 'SPAT Partner Institute'}</div>
                       </div>
                       <div class="title">Daily Activity Logs Report</div>
                       <div class="details">
@@ -639,10 +639,10 @@ export const StudentMetrics = () => {
                   <body>
                     <div class="header">
                       <div class="logo-container" style="display: flex; align-items: center; gap: 10px;">
-                        <img src="/spark-logo1.png" style="width: 32px; height: 32px; object-fit: contain; border-radius: 8px;" />
-                        <span class="logo-text" style="font-size: 26px; font-weight: 900; color: #ea580c; font-family: 'Outfit', sans-serif; letter-spacing: -0.5px;">SPARK</span>
+                        <img src="/spat-logo1.png" style="width: 32px; height: 32px; object-fit: contain; border-radius: 8px;" />
+                        <span class="logo-text" style="font-size: 26px; font-weight: 900; color: #ea580c; font-family: 'Outfit', sans-serif; letter-spacing: -0.5px;">SPAT</span>
                       </div>
-                      <div class="college-name">${user.college || 'SPARK Partner Institute'}</div>
+                      <div class="college-name">${user.college || 'SPAT Partner Institute'}</div>
                     </div>
                     <div class="title">Student Achievement & Submissions Report</div>
                     <div class="details">
