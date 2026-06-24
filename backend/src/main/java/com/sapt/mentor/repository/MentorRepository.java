@@ -10,9 +10,7 @@ package com.sapt.mentor.repository;
  *   userRepository.findByHodId(hodId)
  *   userRepository.findByCollegeIdAndRole(collegeId, UserRole.MENTOR)
  */
-@Repository
-public interface MentorRepository extends JpaRepository<Mentor, Long> {
-    Optional<Mentor> findByUserId(String userId);
-    List<Mentor> findByHodId(Long hodId);
-    List<Mentor> findByCollegeId(Long collegeId);
+@Deprecated(since = "2.0", forRemoval = true)
+public interface MentorRepository {
+    // REMOVED — use com.sapt.auth.repository.UserRepository
 }

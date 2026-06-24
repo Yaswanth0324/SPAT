@@ -10,9 +10,7 @@ package com.sapt.student.repository;
  *   userRepository.findByMentorId(mentorId)
  *   userRepository.findByCollegeIdAndRole(collegeId, UserRole.STUDENT)
  */
-@Repository
-public interface StudentRepository extends JpaRepository<Student, Long> {
-    Optional<Student> findByUserId(String userId);
-    Optional<Student> findByRollNumber(String rollNumber);
-    // TODO: findByDepartmentAndBatch(), findByMentorId(), etc.
+@Deprecated(since = "2.0", forRemoval = true)
+public interface StudentRepository {
+    // REMOVED — use com.sapt.auth.repository.UserRepository
 }

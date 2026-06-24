@@ -41,12 +41,12 @@ public interface SystemAdminService {
     /**
      * Returns a single college by its ID.
      */
-    SystemAdminDto.CollegeResponse getCollegeById(Long collegeId);
+    SystemAdminDto.CollegeResponse getCollegeById(String collegeId);
 
     /**
      * Updates the operational status of a college (activate / deactivate / suspend).
      */
-    void updateCollegeStatus(Long collegeId, CollegeStatus status);
+    void updateCollegeStatus(String collegeId, CollegeStatus status);
 
     /**
      * Returns all College Admin accounts across the platform.

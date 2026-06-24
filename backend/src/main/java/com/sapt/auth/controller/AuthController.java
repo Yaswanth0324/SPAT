@@ -80,14 +80,9 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success("OTP verified successfully"));
     }
 
-    @GetMapping("/verify")
-    public ResponseEntity<Void> verifyUserLink(@RequestParam("email") String email) {
-        authService.verifyEmailDirect(email);
-        return ResponseEntity.status(org.springframework.http.HttpStatus.FOUND)
-                .location(java.net.URI.create("http://localhost:5173/admin-login"))
-                .build();
-    }
-
+    /**
+     * Reset password using a valid OTP.
+     */
     @PostMapping("/password/reset")
     public ResponseEntity<ApiResponse<Void>> resetPassword(
             @Valid @RequestBody AuthDtos.PasswordResetRequest request) {

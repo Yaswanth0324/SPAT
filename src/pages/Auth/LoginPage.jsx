@@ -2,10 +2,10 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { GraduationCap, Eye, EyeOff, Shield, KeyRound, Mail, ArrowLeft, CheckCircle, ChevronDown, PlusCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { login as loginUser, getUsers, getDepartmentsByCollege, addDepartmentToCollege, getColleges } from '../../utils/localStorage';
+import { getDepartmentsByCollege, addDepartmentToCollege, getColleges } from '../../utils/localStorage';
+import { apiLogin, apiGetColleges, apiGetDepartments } from '../../utils/api';
 import { useToast } from '../../components/ui/UIComponents';
 import { ROLES } from '../../utils/mockData';
-import { authApi } from '../../utils/api';
 
 // ---- System / Admin Login ----
 export const AdminLoginPage = () => {
@@ -20,19 +20,34 @@ export const AdminLoginPage = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      // Try SYSTEM_ADMIN first, then COLLEGE_ADMIN
-      let data = null;
+      // Determine role — try SYSTEM_ADMIN first, fall back to COLLEGE_ADMIN
+      let res = null;
+      let role = null;
+
+      // Try SYSTEM_ADMIN
       try {
-        data = await authApi.login(form.email, form.password, ROLES.SYSTEM_ADMIN);
+        res = await apiLogin(form.email, form.password, 'SYSTEM_ADMIN');
+        role = 'SYSTEM_ADMIN';
       } catch {
-        data = await authApi.login(form.email, form.password, ROLES.COLLEGE_ADMIN);
+        // Try COLLEGE_ADMIN
+        try {
+          res = await apiLogin(form.email, form.password, 'COLLEGE_ADMIN');
+          role = 'COLLEGE_ADMIN';
+        } catch (err2) {
+          throw new Error(err2.message || 'Invalid credentials');
+        }
       }
-      login(data);
-      if (data.role === ROLES.SYSTEM_ADMIN)      navigate('/dashboard/system-admin');
-      else if (data.role === ROLES.COLLEGE_ADMIN) navigate('/dashboard/college-admin');
-      else showToast('Not an admin account.', 'error');
+
+      // Verify adminId matches
+      if (res.user.adminId && form.adminId.trim().toUpperCase() !== res.user.adminId.toUpperCase()) {
+        throw new Error('Admin ID does not match');
+      }
+
+      login(res.user);
+      if (role === 'SYSTEM_ADMIN') navigate('/dashboard/system-admin');
+      else if (role === 'COLLEGE_ADMIN') navigate('/dashboard/college-admin');
     } catch (err) {
-      showToast(err.message || 'Invalid credentials.', 'error');
+      showToast(err.message || 'Invalid credentials', 'error');
     } finally {
       setLoading(false);
     }
@@ -47,7 +62,7 @@ export const AdminLoginPage = () => {
             <Shield className="w-8 h-8 text-white" />
           </div>
           <h1 className="font-display text-2xl font-bold text-slate-900 dark:text-white">Admin Login</h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">System &amp; College Administrator Access</p>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">System & College Administrator Access</p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

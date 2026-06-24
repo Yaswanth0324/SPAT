@@ -6,6 +6,7 @@ import com.sapt.collegeadmin.entity.College;
 import com.sapt.collegeadmin.repository.CollegeRepository;
 import com.sapt.common.enums.CollegeStatus;
 import com.sapt.common.enums.UserRole;
+import com.sapt.common.enums.UserStatus;
 import com.sapt.common.exception.SaptException;
 import com.sapt.notification.mail.MailService;
 import com.sapt.notification.templates.MailTemplates;
@@ -20,6 +21,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+
 
 /**
  * SystemAdminServiceImpl - Full implementation of System Admin business logic.
@@ -100,9 +102,7 @@ public class SystemAdminServiceImpl implements SystemAdminService {
                             .name(req.getCollegeName().trim())
                             .address(req.getCollegeAddress())
                             .state(req.getCollegeState())
-                            .phone(req.getCollegePhone())
-                            .email(req.getCollegeEmail())
-                            .website(req.getCollegeWebsite())
+                            .officialEmail(req.getCollegeEmail())
                             .status(CollegeStatus.ACTIVE)
                             .contractStart(LocalDate.now())
                             .contractEnd(LocalDate.now().plusYears(2))
@@ -121,11 +121,10 @@ public class SystemAdminServiceImpl implements SystemAdminService {
                 .adminId(req.getAdminEmployeeId())
                 .phone(req.getAdminPhone())
                 .position("College Administrator")
-                .collegeId(college.getId() != null ? String.valueOf(college.getId()) : null)
+                .collegeId(college.getId())
                 .collegeName(college.getName())
-                .status("PENDING")
+                .status(UserStatus.PENDING)
                 .isActive(false)
-                .emailVerified(false)
                 .build();
         collegeAdmin = userRepository.save(collegeAdmin);
         log.info("Created unverified college admin in users table: id={}, email={}", collegeAdmin.getId(), collegeAdmin.getEmail());
@@ -177,9 +176,9 @@ public class SystemAdminServiceImpl implements SystemAdminService {
                     .name(col.getName())
                     .address(col.getAddress())
                     .state(col.getState())
-                    .phone(col.getPhone())
-                    .email(col.getEmail())
-                    .website(col.getWebsite())
+                    .phone(null)
+                    .email(col.getOfficialEmail())
+                    .website(null)
                     .status(col.getStatus())
                     .contractStart(col.getContractStart())
                     .contractEnd(col.getContractEnd())
@@ -197,7 +196,7 @@ public class SystemAdminServiceImpl implements SystemAdminService {
     // ─────────────────────────────────────────────────────────────────────────
 
     @Override
-    public SystemAdminDto.CollegeResponse getCollegeById(Long collegeId) {
+    public SystemAdminDto.CollegeResponse getCollegeById(String collegeId) {
         College col = collegeRepository.findById(collegeId)
                 .orElseThrow(() -> SaptException.notFound("College not found with id: " + collegeId));
 
@@ -211,9 +210,9 @@ public class SystemAdminServiceImpl implements SystemAdminService {
                 .name(col.getName())
                 .address(col.getAddress())
                 .state(col.getState())
-                .phone(col.getPhone())
-                .email(col.getEmail())
-                .website(col.getWebsite())
+                .phone(null)
+                .email(col.getOfficialEmail())
+                .website(null)
                 .status(col.getStatus())
                 .contractStart(col.getContractStart())
                 .contractEnd(col.getContractEnd())
@@ -231,7 +230,7 @@ public class SystemAdminServiceImpl implements SystemAdminService {
 
     @Override
     @Transactional
-    public void updateCollegeStatus(Long collegeId, CollegeStatus status) {
+    public void updateCollegeStatus(String collegeId, CollegeStatus status) {
         College college = collegeRepository.findById(collegeId)
                 .orElseThrow(() -> SaptException.notFound("College not found with id: " + collegeId));
         college.setStatus(status);

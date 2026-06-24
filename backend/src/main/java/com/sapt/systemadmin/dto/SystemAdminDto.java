@@ -65,7 +65,7 @@ public class SystemAdminDto {
     @Data
     @Builder
     public static class CollegeResponse {
-        private Long id;
+        private String id;
         private String name;
         private String address;
         private String state;

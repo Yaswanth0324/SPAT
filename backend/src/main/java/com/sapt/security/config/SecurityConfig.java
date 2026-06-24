@@ -1,7 +1,6 @@
 package com.sapt.security.config;
 
 import com.sapt.security.filter.JwtAuthFilter;
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -15,22 +14,31 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfigurationSource;
 
 /**
- * SecurityConfig - Spring Security Configuration.
+ * ============================================================
+ * SecurityConfig - Spring Security Configuration
+ * ============================================================
+ * Configures:
+ *  - HTTP security (CSRF disabled, stateless sessions, CORS)
+ *  - Endpoint access rules per role
+ *  - JWT filter registration
+ *  - Password encoding (BCrypt)
+ *  - Authentication provider setup
  *
- * NOTE: PasswordEncoder bean is defined in PasswordEncoderConfig (auth module) — injected here.
+ * Public endpoints (no token required):
+ *   POST /api/auth/login
+ *   POST /api/auth/register
+ *   POST /api/auth/otp/send
+ *   POST /api/auth/otp/verify
+ *   POST /api/auth/password/reset
  *
- * Rules:
- *  - Stateless JWT auth (no sessions, no CSRF)
- *  - Public: /api/auth/** (login, register, OTP)
- *  - All other /api/** routes require authentication
- *  - Role-based access is enforced via @PreAuthorize on individual controllers
+ * All other endpoints require a valid JWT Bearer token.
+ * Role-based access is enforced via @PreAuthorize in controllers.
+ * ============================================================
  */
 @Configuration
 @EnableWebSecurity
@@ -38,98 +46,64 @@ import org.springframework.web.cors.CorsConfigurationSource;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final JwtAuthFilter           jwtAuthFilter;
-    private final UserDetailsService      userDetailsService;
-    private final PasswordEncoder         passwordEncoder;     // from PasswordEncoderConfig
+    private final JwtAuthFilter jwtAuthFilter;
+    private final UserDetailsService userDetailsService;
+    private final PasswordEncoder passwordEncoder;
+    /** Injected from CorsConfig — avoids duplicate bean definition */
     private final CorsConfigurationSource corsConfigurationSource;
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Main Security Filter Chain
-    // ─────────────────────────────────────────────────────────────────────────
-
+    /**
+     * Main security filter chain configuration.
+     * - CSRF disabled (REST API is stateless)
+     * - Sessions are STATELESS (JWT-based)
+     * - Auth endpoints are public; all others require authentication
+     */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            // Disable CSRF — REST API is stateless
             .csrf(csrf -> csrf.disable())
-
-            // Wire CORS from CorsConfig bean
             .cors(cors -> cors.configurationSource(corsConfigurationSource))
-
-            // Stateless sessions — no HttpSession
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-
-            // Endpoint access rules
             .authorizeHttpRequests(auth -> auth
-                // Public: auth endpoints (login, register, OTP, verify)
-                .requestMatchers("/auth/**").permitAll()
-                // Everything else requires a valid JWT
+                // ---- Public Auth Endpoints ----
+                // NOTE: context-path is /api, so Spring Security sees paths WITHOUT /api prefix
+                .requestMatchers(
+                    "/auth/login",
+                    "/auth/register",
+                    "/auth/otp/send",
+                    "/auth/otp/verify",
+                    "/auth/password/reset",
+                    "/auth/logout",
+                    "/auth/colleges",
+                    "/auth/colleges/**",
+                    "/auth/mentors"
+                ).permitAll()
+
+                // ---- All other requests require authentication ----
+                // Role-specific access is enforced via @PreAuthorize in controllers
                 .anyRequest().authenticated()
             )
-
-            // Custom JSON error responses (no empty body on 401/403)
-            .exceptionHandling(ex -> ex
-                .authenticationEntryPoint(jsonAuthEntryPoint())
-                .accessDeniedHandler(jsonAccessDeniedHandler())
-            )
-
-            // Custom auth provider (UserDetailsService + BCrypt)
             .authenticationProvider(authenticationProvider())
-
-            // JWT filter runs before Spring's default auth filter
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
     /**
-     * Returns a JSON 401 response instead of Spring Security's default empty 401.
-     * Prevents "Unexpected end of JSON input" in the frontend.
+     * Authentication provider — uses CustomUserDetailsService + BCryptPasswordEncoder.
      */
-    @Bean
-    public AuthenticationEntryPoint jsonAuthEntryPoint() {
-        return (request, response, authException) -> {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.setContentType("application/json");
-            response.getWriter().write(
-                "{\"success\":false,\"message\":\"Unauthorized — please log in again.\"," +
-                "\"timestamp\":\"" + java.time.LocalDateTime.now() + "\"}"
-            );
-        };
-    }
-
-    /**
-     * Returns a JSON 403 response instead of an empty body.
-     */
-    @Bean
-    public AccessDeniedHandler jsonAccessDeniedHandler() {
-        return (request, response, accessDeniedException) -> {
-            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-            response.setContentType("application/json");
-            response.getWriter().write(
-                "{\"success\":false,\"message\":\"Access denied — you don't have permission.\"," +
-                "\"timestamp\":\"" + java.time.LocalDateTime.now() + "\"}"
-            );
-        };
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Authentication Provider
-    // ─────────────────────────────────────────────────────────────────────────
-
     @Bean
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
         provider.setUserDetailsService(userDetailsService);
-        provider.setPasswordEncoder(passwordEncoder);   // injected — no duplicate bean
+        provider.setPasswordEncoder(passwordEncoder);
         return provider;
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Authentication Manager
-    // ─────────────────────────────────────────────────────────────────────────
-
+    /**
+     * AuthenticationManager — needed for manual authentication in AuthService.
+     */
     @Bean
     public AuthenticationManager authenticationManager(
             AuthenticationConfiguration authenticationConfiguration) throws Exception {

@@ -1,137 +1,227 @@
 package com.sapt.auth.entity;
 
 import com.sapt.common.enums.UserRole;
+import com.sapt.common.enums.UserStatus;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.UuidGenerator;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 /**
- * User - Unified user entity for all roles.
- * Table: users
+ * ============================================================
+ * User — Unified User Entity (All Roles)
+ * ============================================================
+ * The single source of truth for ALL users in the system.
+ * All five roles are stored in this one table:
+ *   SYSTEM_ADMIN, COLLEGE_ADMIN, HOD, MENTOR, STUDENT
  *
- * All roles (SYSTEM_ADMIN, COLLEGE_ADMIN, HOD, MENTOR, STUDENT) share this table.
- * Role-specific detail tables (system_admins, college_admins, etc.) link to this via userId.
+ * Role-specific fields are nullable and only populated
+ * when relevant to the user's role:
+ *
+ *   SYSTEM_ADMIN  → only core fields (name, email, adminId)
+ *   COLLEGE_ADMIN → collegeId, adminId
+ *   HOD           → collegeId, departmentId, hodId (if dept has HOD above)
+ *   MENTOR        → collegeId, departmentId, hodId
+ *   STUDENT       → collegeId, departmentId, rollNo, mentorId, mentorName
+ *
+ * OTP is stored directly on this entity (no separate otp_tokens table).
+ * Self-referencing FKs: mentor_id and hod_id reference users(id).
+ *
+ * Table: users
+ * ============================================================
  */
 @Entity
-@Table(name = "users")
+@Table(
+    name = "users",
+    indexes = {
+        @Index(name = "idx_users_email",      columnList = "email",         unique = true),
+        @Index(name = "idx_users_role",       columnList = "role"),
+        @Index(name = "idx_users_college",    columnList = "college_id"),
+        @Index(name = "idx_users_department", columnList = "department_id"),
+        @Index(name = "idx_users_mentor",     columnList = "mentor_id"),
+        @Index(name = "idx_users_hod",        columnList = "hod_id"),
+        @Index(name = "idx_users_status",     columnList = "status")
+    }
+)
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class User {
 
-    /** UUID primary key */
+    // ─── Primary Key (UUID) ───────────────────────────────────
     @Id
-    @Column(name = "id", length = 36)
+    @UuidGenerator
+    @Column(updatable = false, nullable = false, columnDefinition = "CHAR(36)")
     private String id;
 
-    /** Role of the user */
+    // ─── Core Identity ────────────────────────────────────────
+    /**
+     * The role determines which role-specific fields are populated.
+     */
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 20)
     private UserRole role;
 
-    /** Full name */
-    @Column(name = "name")
+    @Column(nullable = false, length = 255)
     private String name;
 
-    /** Unique login email */
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false, unique = true, length = 255)
     private String email;
 
-    /** BCrypt-hashed password — NEVER store plain text */
-    @Column(name = "password_hash", nullable = false)
+    @JsonIgnore
+    @Column(name = "password_hash", nullable = false, length = 255)
     private String passwordHash;
 
-    /** Employee/Admin ID (for SYSTEM_ADMIN, COLLEGE_ADMIN, HOD, MENTOR) */
-    @Column(name = "admin_id")
+    // ─── Common Profile Fields ────────────────────────────────
+    /**
+     * Employee ID for staff roles (COLLEGE_ADMIN, HOD, MENTOR).
+     * Admin reference number for SYSTEM_ADMIN.
+     */
+    @Column(name = "admin_id", length = 50)
     private String adminId;
 
-    /** Phone number */
-    @Column(name = "phone")
+    @Column(name = "avatar_url", columnDefinition = "LONGTEXT")
+    private String avatarUrl;
+
+    @Column(length = 20)
     private String phone;
 
-    /** Position/Designation */
-    @Column(name = "position")
+    /**
+     * Job title or position (e.g., "Head of Department – CSE",
+     * "Associate Professor", "Assistant Professor").
+     */
+    @Column(length = 150)
     private String position;
 
-    /** FK → colleges.id (null for SYSTEM_ADMIN) */
-    @Column(name = "college_id", length = 36)
+    /** ID card / profile card image URL */
+    @Column(name = "id_card_url", columnDefinition = "LONGTEXT")
+    private String idCardUrl;
+
+    // ─── College Reference ────────────────────────────────────
+    /**
+     * FK → colleges.id (UUID).
+     * null for SYSTEM_ADMIN.
+     */
+    @Column(name = "college_id", columnDefinition = "CHAR(36)")
     private String collegeId;
 
-    /** Denormalized college name for fast reads */
-    @Column(name = "college_name")
+    /**
+     * Denormalized college name for API responses / display without JOIN.
+     * Kept in sync whenever college assignment changes.
+     * Frontend uses: user.college
+     */
+    @Column(name = "college_name", length = 255)
     private String collegeName;
 
-    /** FK → departments.id */
-    @Column(name = "department_id", length = 36)
+    // ─── Department Reference ─────────────────────────────────
+    /**
+     * FK → departments.id (UUID).
+     * Applicable to HOD, MENTOR, STUDENT.
+     */
+    @Column(name = "department_id", columnDefinition = "CHAR(36)")
     private String departmentId;
 
-    /** Denormalized department name */
-    @Column(name = "department_name")
+    /**
+     * Denormalized department name for API responses / display without JOIN.
+     * Kept in sync whenever department assignment changes.
+     * Frontend uses: user.department
+     */
+    @Column(name = "department_name", length = 255)
     private String departmentName;
 
-    /** Roll number (STUDENT only) */
-    @Column(name = "roll_no")
+    // ─── Student-Specific Fields ─────────────────────────────
+    /**
+     * Student roll/register number.
+     * Unique per college (enforced by uk_roll_per_college constraint).
+     */
+    @Column(name = "roll_no", length = 50)
     private String rollNo;
 
-    /** FK → users.id (mentor of this student) */
-    @Column(name = "mentor_id", length = 36)
+    /**
+     * Self-referencing FK → users.id (mentor's user record).
+     * Set when role = STUDENT; references the assigned MENTOR user.
+     */
+    @Column(name = "mentor_id", columnDefinition = "CHAR(36)")
     private String mentorId;
 
-    /** Denormalized mentor name */
-    @Column(name = "mentor_name")
+    /**
+     * Denormalized mentor name for fast display without a join.
+     * Kept in sync when mentor changes.
+     */
+    @Column(name = "mentor_name", length = 255)
     private String mentorName;
 
-    /** FK → users.id (HOD of this user's department) */
-    @Column(name = "hod_id", length = 36)
+    // ─── HOD Reference ────────────────────────────────────────
+    /**
+     * Self-referencing FK → users.id (HOD's user record).
+     * Set when role = MENTOR; references the HOD overseeing this mentor.
+     */
+    @Column(name = "hod_id", columnDefinition = "CHAR(36)")
     private String hodId;
 
-    /** Account approval status */
-    @Column(name = "status")
-    private String status;  // PENDING, APPROVED, REJECTED
+    // ─── Account Status ───────────────────────────────────────
+    /**
+     * Approval status:
+     *   PENDING  → registered, awaiting supervisor approval
+     *   APPROVED → active, can log in and use the system
+     *   REJECTED → denied access
+     *
+     * Default is PENDING for STUDENT registrations.
+     * Staff accounts created by admins are set to APPROVED directly.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    @Builder.Default
+    private UserStatus status = UserStatus.PENDING;
 
-    /** Whether the account is active (soft-delete) */
+    /** Whether this account is enabled (soft-delete flag) */
     @Column(name = "is_active", nullable = false)
-    private boolean isActive;
+    @Builder.Default
+    private boolean isActive = true;
 
-    /** Whether the email has been verified via link or OTP */
-    @Column(name = "email_verified", nullable = false)
-    private boolean emailVerified;
-
-    /** Timestamp of last login */
+    /** Timestamp of last successful login */
     @Column(name = "last_login_at")
     private LocalDateTime lastLoginAt;
 
-    /** OTP code for email verification */
-    @Column(name = "otp_code")
+    // ─── OTP (stored directly on user, no separate otp_tokens table) ─
+    /**
+     * One-time password code for email verification or password reset.
+     * Cleared after successful use.
+     */
+    @Column(name = "otp_code", length = 10)
     private String otpCode;
 
-    /** OTP expiry timestamp */
+    /** When the OTP code expires (typically 10-15 minutes after issue) */
     @Column(name = "otp_expires_at")
     private LocalDateTime otpExpiresAt;
 
-    /** Profile picture (Base64 or URL) */
-    @Column(name = "avatar_url", columnDefinition = "TEXT")
-    private String avatarUrl;
-
-
+    // ─── Timestamps ──────────────────────────────────────────
     @CreationTimestamp
-    @Column(name = "created_at", updatable = false)
+    @Column(name = "created_at", updatable = false, nullable = false)
     private LocalDateTime createdAt;
 
     @UpdateTimestamp
-    @Column(name = "updated_at")
+    @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    /** Generate a new UUID id before persisting if not set. */
-    @PrePersist
-    public void generateId() {
-        if (this.id == null || this.id.isBlank()) {
-            this.id = UUID.randomUUID().toString();
-        }
+    public String getAvatar() {
+        return avatarUrl;
+    }
+
+    public String getProfileImage() {
+        return avatarUrl;
+    }
+
+    public String getCollege() {
+        return collegeName;
+    }
+
+    public String getDepartment() {
+        return departmentName;
     }
 }

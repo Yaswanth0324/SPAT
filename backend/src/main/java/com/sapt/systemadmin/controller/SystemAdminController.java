@@ -108,7 +108,7 @@ public class SystemAdminController {
      */
     @GetMapping("/colleges/{id}")
     public ResponseEntity<ApiResponse<SystemAdminDto.CollegeResponse>> getCollegeById(
-            @PathVariable Long id
+            @PathVariable String id
     ) {
         SystemAdminDto.CollegeResponse college = systemAdminService.getCollegeById(id);
         return ResponseEntity.ok(ApiResponse.success("College fetched successfully", college));
@@ -120,7 +120,7 @@ public class SystemAdminController {
      */
     @PutMapping("/colleges/{id}/status")
     public ResponseEntity<ApiResponse<Void>> updateCollegeStatus(
-            @PathVariable Long id,
+            @PathVariable String id,
             @RequestBody SystemAdminDto.UpdateCollegeStatusRequest request
     ) {
         systemAdminService.updateCollegeStatus(id, request.getStatus());

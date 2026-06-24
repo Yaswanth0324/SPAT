@@ -56,8 +56,17 @@ public interface AuthService {
      */
     void logout(String token);
 
-    /**
-     * Directly verify the user's email address by setting emailVerified and active to true.
-     */
-    void verifyEmailDirect(String email);
+    java.util.List<AuthDtos.CollegeDto> getAllColleges();
+
+    java.util.List<String> getDepartmentsByCollegeName(String collegeName);
+
+    java.util.List<AuthDtos.MentorDto> getMentors(String collegeName, String departmentName);
+
+    java.util.List<com.sapt.auth.entity.User> getUsersByCollegeAndRole(String collegeName, com.sapt.common.enums.UserRole role);
+
+    java.util.List<com.sapt.auth.entity.User> getUsersByMentorId(String mentorId);
+
+    void updateUserStatus(String userId, com.sapt.common.enums.UserStatus status);
+
+    com.sapt.auth.entity.User updateProfile(String userId, com.sapt.auth.dto.ProfileUpdateRequest request);
 }

@@ -64,6 +64,8 @@ public class CorsConfig {
         config.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        // context-path is /api, so Spring Security sees paths WITHOUT /api prefix
+        // Pattern must be /** to match /auth/login, /colleges/*, etc.
         source.registerCorsConfiguration("/**", config);
         return source;
     }

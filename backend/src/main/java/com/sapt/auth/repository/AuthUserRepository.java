@@ -1,18 +1,10 @@
 package com.sapt.auth.repository;
 
-import com.sapt.auth.entity.AuthUser;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
-
-import java.util.Optional;
-
 /**
- * @deprecated Replaced by {@link UserRepository} which uses the unified users table.
- * Kept only so existing references compile without errors.
+ * @deprecated Replaced by {@link UserRepository}.
+ * Use UserRepository for all user queries against the unified `users` table.
  */
-@Deprecated
-@Repository
-public interface AuthUserRepository extends JpaRepository<AuthUser, Long> {
-    Optional<AuthUser> findByEmail(String email);
-    boolean existsByEmail(String email);
+@Deprecated(since = "2.0", forRemoval = true)
+public interface AuthUserRepository {
+    // REMOVED — use UserRepository
 }

@@ -14,27 +14,5 @@ package com.sapt.mentor.entity;
  */
 @Deprecated(since = "2.0", forRemoval = true)
 public class Mentor {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    /** FK → users.id (UUID string) */
-    @Column(nullable = false, unique = true, length = 36)
-    private String userId;
-
-    private String fullName;
-    private String employeeId;
-    private String department;
-    private Long collegeId;
-    private Long hodId;
-
-    @Column(nullable = false)
-    private boolean active = true;
-
-    @CreationTimestamp @Column(updatable = false)
-    private LocalDateTime createdAt;
-
-    @UpdateTimestamp
-    private LocalDateTime updatedAt;
+    // REMOVED — use com.sapt.auth.entity.User (role = MENTOR)
 }

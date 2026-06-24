@@ -6,6 +6,7 @@ import com.sapt.collegeadmin.entity.College;
 import com.sapt.collegeadmin.repository.CollegeRepository;
 import com.sapt.common.enums.CollegeStatus;
 import com.sapt.common.enums.UserRole;
+import com.sapt.common.enums.UserStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
@@ -50,9 +51,7 @@ public class DatabaseSeeder implements CommandLineRunner {
                     .name(collegeName)
                     .address("Plot 45, Knowledge City, Madhapur, Hyderabad - 500081")
                     .state("Telangana")
-                    .phone("9000000002")
-                    .email("principal@democollege.edu.in")
-                    .website("http://democollege.edu.in")
+                    .officialEmail("principal@democollege.edu.in")
                     .status(CollegeStatus.ACTIVE)
                     .contractStart(LocalDate.now())
                     .contractEnd(LocalDate.now().plusYears(2))
@@ -73,9 +72,8 @@ public class DatabaseSeeder implements CommandLineRunner {
                     .adminId("SYS-001")
                     .phone("9000000001")
                     .position("System Administrator")
-                    .status("APPROVED")
+                    .status(UserStatus.APPROVED)
                     .isActive(true)
-                    .emailVerified(true)
                     .build();
             userRepository.save(sysAdmin);
             log.info("System Admin seeded: {}", adminEmail);
@@ -83,8 +81,7 @@ public class DatabaseSeeder implements CommandLineRunner {
             userRepository.findByEmail(adminEmail).ifPresent(u -> {
                 u.setPasswordHash(passwordEncoder.encode("spark@2403"));
                 u.setActive(true);
-                u.setEmailVerified(true);
-                u.setStatus("APPROVED");
+                u.setStatus(UserStatus.APPROVED);
                 userRepository.save(u);
                 log.info("System Admin updated: {}", adminEmail);
             });
@@ -102,11 +99,10 @@ public class DatabaseSeeder implements CommandLineRunner {
                     .adminId("CA-001")
                     .phone("9000000002")
                     .position("College Administrator")
-                    .collegeId(college.getId() != null ? String.valueOf(college.getId()) : null)
+                    .collegeId(college.getId())
                     .collegeName(collegeName)
-                    .status("APPROVED")
+                    .status(UserStatus.APPROVED)
                     .isActive(true)
-                    .emailVerified(true)
                     .build();
             userRepository.save(collegeAdmin);
             log.info("Default College Admin seeded: {}", caEmail);
@@ -114,8 +110,7 @@ public class DatabaseSeeder implements CommandLineRunner {
             userRepository.findByEmail(caEmail).ifPresent(u -> {
                 u.setPasswordHash(passwordEncoder.encode("collegeAdmin@2403"));
                 u.setActive(true);
-                u.setEmailVerified(true);
-                u.setStatus("APPROVED");
+                u.setStatus(UserStatus.APPROVED);
                 u.setCollegeName(collegeName);
                 userRepository.save(u);
                 log.info("Default College Admin updated: {}", caEmail);
@@ -208,9 +203,8 @@ public class DatabaseSeeder implements CommandLineRunner {
                         .position(role == UserRole.COLLEGE_ADMIN ? "College Administrator" : role.name())
                         .collegeId(collegeId)
                         .collegeName(collegeName)
-                        .status(active && verified ? "APPROVED" : "PENDING")
+                        .status(active && verified ? UserStatus.APPROVED : UserStatus.PENDING)
                         .isActive(active)
-                        .emailVerified(verified)
                         .build();
 
                 userRepository.save(migratedUser);

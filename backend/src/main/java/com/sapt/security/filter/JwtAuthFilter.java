@@ -18,13 +18,22 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 
 /**
- * JwtAuthFilter - JWT Authentication Filter.
+ * ============================================================
+ * JwtAuthFilter - JWT Authentication Filter
+ * ============================================================
+ * Intercepts every HTTP request and validates the JWT token
+ * from the Authorization header before it reaches controllers.
  *
- * Intercepts every HTTP request, extracts and validates the Bearer JWT token,
- * and sets the authentication in the SecurityContext so Spring Security
- * can apply @PreAuthorize rules in controllers.
+ * Filter Order: Runs BEFORE UsernamePasswordAuthenticationFilter
  *
- * Filter Order: runs BEFORE UsernamePasswordAuthenticationFilter.
+ * Flow:
+ *  1. Extract "Authorization: Bearer <token>" header
+ *  2. Parse JWT and extract username (email)
+ *  3. Load UserDetails from DB via CustomUserDetailsService
+ *  4. Validate token signature and expiry
+ *  5. Set authentication in SecurityContextHolder
+ *  6. Continue filter chain
+ * ============================================================
  */
 @Slf4j
 @Component
@@ -43,24 +52,22 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         final String authHeader = request.getHeader("Authorization");
 
-        // If no Bearer token present, skip this filter
+        // Skip if no Authorization header or not a Bearer token
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        final String token    = authHeader.substring(7);
+        final String token = authHeader.substring(7); // remove "Bearer " prefix
         String username = null;
 
         try {
             username = jwtUtil.extractUsername(token);
         } catch (Exception e) {
-            log.warn("Failed to extract username from JWT: {}", e.getMessage());
-            filterChain.doFilter(request, response);
-            return;
+            log.warn("Could not extract username from JWT: {}", e.getMessage());
         }
 
-        // Only authenticate if not already set in context
+        // Authenticate only if username is extracted and not already authenticated
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             try {
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
@@ -68,13 +75,20 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 if (jwtUtil.validateToken(token, userDetails)) {
                     UsernamePasswordAuthenticationToken authToken =
                             new UsernamePasswordAuthenticationToken(
-                                    userDetails, null, userDetails.getAuthorities()
+                                    userDetails,
+                                    null,
+                                    userDetails.getAuthorities()
                             );
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
+                    log.debug("JWT authentication successful for user: {}", username);
+                } else {
+                    log.warn("JWT token validation failed for user: {}", username);
                 }
             } catch (Exception e) {
-                log.warn("JWT validation failed for user '{}': {}", username, e.getMessage());
+                log.warn("JWT filter error for user {}: {}", username, e.getMessage());
+                // Clear any partial auth state
+                SecurityContextHolder.clearContext();
             }
         }
 
