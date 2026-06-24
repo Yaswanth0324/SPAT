@@ -1,43 +1,59 @@
 package com.sapt.config;
 
+import com.mongodb.ConnectionString;
+import com.mongodb.MongoClientSettings;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.mongodb.config.AbstractMongoClientConfiguration;
-import org.springframework.beans.factory.annotation.Value;
+
+import java.util.concurrent.TimeUnit;
 
 /**
  * ============================================================
  * MongoConfig - MongoDB Configuration
  * ============================================================
- * Configures the MongoDB connection using environment variables.
+ * Configures the MongoDB connection with:
+ *  - 5s serverSelectionTimeout (fail fast instead of looping)
+ *  - 5s connectTimeout
+ *  - Retryable writes enabled
+ *
  * MongoDB is used in SAPT for:
  *  - Activity submission logs / audit trail
  *  - Notification history
  *  - System event logs
- *
- * Connection is configured via application.properties:
- *   spring.data.mongodb.uri=${MONGO_URI}
- *   spring.data.mongodb.database=${MONGO_DATABASE}
- *
- * No extra configuration is needed for basic usage.
- * This class is a placeholder for custom MongoDB config if needed.
- *
- * TODO (Backend Team):
- *  - Add custom converters if using custom types
- *  - Configure MongoDB transactions if needed
- *  - Add indexes via @Document and @Indexed on MongoDB entities
  * ============================================================
  */
 @Configuration
-public class MongoConfig {
+public class MongoConfig extends AbstractMongoClientConfiguration {
 
-    // Spring Boot auto-configures MongoDB via application.properties.
-    // This class is a placeholder for any custom configuration.
+    @Value("${spring.data.mongodb.uri}")
+    private String mongoUri;
 
-    // TODO: Add custom MongoTemplate or converters here if needed.
-    // Example:
-    //
-    // @Bean
-    // public MongoTemplate mongoTemplate(MongoDatabaseFactory factory) {
-    //     return new MongoTemplate(factory);
-    // }
+    @Value("${spring.data.mongodb.database}")
+    private String mongoDatabase;
+
+    @Override
+    protected String getDatabaseName() {
+        return mongoDatabase;
+    }
+
+    @Override
+    @Bean
+    public MongoClient mongoClient() {
+        MongoClientSettings settings = MongoClientSettings.builder()
+                .applyConnectionString(new ConnectionString(mongoUri))
+                // Fail fast: 5 seconds to find an available server
+                .applyToClusterSettings(cluster ->
+                        cluster.serverSelectionTimeout(5000, TimeUnit.MILLISECONDS))
+                // 5 second connect timeout per socket
+                .applyToSocketSettings(socket ->
+                        socket.connectTimeout(5000, TimeUnit.MILLISECONDS)
+                              .readTimeout(10000, TimeUnit.MILLISECONDS))
+                .retryWrites(true)
+                .build();
+        return MongoClients.create(settings);
+    }
 }

@@ -1,18 +1,18 @@
 package com.sapt.mentor.entity;
 
-import jakarta.persistence.*;
-import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
-import java.time.LocalDateTime;
-
 /**
- * Mentor - MySQL Entity
- * TODO (Mentor Team): Add college reference, department, assigned students list, etc.
+ * @deprecated The separate `mentors` table no longer exists.
+ *
+ * All mentor data is now stored in the unified `users` table
+ * with role = MENTOR. Fields (phone, department, collegeName, etc.)
+ * are columns on the User entity.
+ *
+ * Succession requests are handled by {@link SuccessionRequest} entity
+ * (stored in the `succession_requests` table).
+ *
+ * Use {@link com.sapt.auth.entity.User} with role filter MENTOR.
  */
-@Entity
-@Table(name = "mentors")
-@Data @Builder @NoArgsConstructor @AllArgsConstructor
+@Deprecated(since = "2.0", forRemoval = true)
 public class Mentor {
 
     @Id

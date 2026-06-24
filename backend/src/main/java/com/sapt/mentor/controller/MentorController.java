@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.*;
  * TODO (Mentor Team): Add endpoints for profile, assigned students, submission review.
  */
 @RestController
-@RequestMapping("/api/mentor")
+@RequestMapping("/mentor")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('MENTOR')")
 public class MentorController {
@@ -25,3 +25,4 @@ public class MentorController {
     // TODO: @PutMapping("/submissions/{id}/approve") approveSubmission()
     // TODO: @PutMapping("/submissions/{id}/reject") rejectSubmission()
 }
+

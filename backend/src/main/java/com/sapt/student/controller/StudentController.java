@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
  * TODO (Student Team): Add endpoints for profile, submissions, points.
  */
 @RestController
-@RequestMapping("/api/student")
+@RequestMapping("/student")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('STUDENT')")
 public class StudentController {
@@ -27,3 +27,4 @@ public class StudentController {
     // TODO: @GetMapping("/points") getTotalPoints()
     // TODO: @PostMapping("/submissions") createSubmission()
 }
+

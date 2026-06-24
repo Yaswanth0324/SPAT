@@ -6,8 +6,15 @@ const AuthContext = createContext(null);
 const SESSION_KEY = 'spark_current_user';
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(() => {
+    try {
+      return getCurrentUser();
+    } catch (err) {
+      console.error('Failed to parse user session on startup:', err);
+      return null;
+    }
+  });
+  const [loading, setLoading] = useState(false);
 
   // Restore session from localStorage on mount
   useEffect(() => {
@@ -80,3 +87,4 @@ export const useAuth = () => {
   if (!ctx) throw new Error('useAuth must be used within AuthProvider');
   return ctx;
 };
+

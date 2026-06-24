@@ -1,18 +1,10 @@
 package com.sapt.collegeadmin.entity;
 
-import jakarta.persistence.*;
-import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
-import java.time.LocalDateTime;
-
 /**
  * CollegeAdmin - College Administrator MySQL Entity.
  * Links an AuthUser (credentials) to a specific College.
  */
-@Entity
-@Table(name = "college_admins")
-@Data @Builder @NoArgsConstructor @AllArgsConstructor
+@Deprecated(since = "2.0", forRemoval = true)
 public class CollegeAdmin {
 
     @Id

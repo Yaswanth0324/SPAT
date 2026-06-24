@@ -1,14 +1,14 @@
 package com.sapt.mentor.repository;
 
-import com.sapt.mentor.entity.Mentor;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
-import java.util.List;
-import java.util.Optional;
-
 /**
- * MentorRepository - JPA Repository for Mentor entity.
- * TODO (Mentor Team): Add custom query methods as needed.
+ * @deprecated The `mentors` table no longer exists as a separate entity.
+ *
+ * All mentor data is in the unified `users` table (role = MENTOR).
+ * Use {@link com.sapt.auth.repository.UserRepository} instead:
+ *
+ *   userRepository.findByRole(UserRole.MENTOR)
+ *   userRepository.findByHodId(hodId)
+ *   userRepository.findByCollegeIdAndRole(collegeId, UserRole.MENTOR)
  */
 @Repository
 public interface MentorRepository extends JpaRepository<Mentor, Long> {

@@ -17,6 +17,7 @@ import java.util.List;
  * IMPORTANT: In SAPT the JWT subject is the user.id (UUID string).
  * So loadUserByUsername receives the UUID id as a string.
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CustomUserDetailsService implements UserDetailsService {

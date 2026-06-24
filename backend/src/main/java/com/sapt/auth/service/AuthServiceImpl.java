@@ -15,6 +15,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
 
 /**
  * AuthServiceImpl - Authentication Service Implementation.
@@ -38,6 +43,7 @@ public class AuthServiceImpl implements AuthService {
     // ─────────────────────────────────────────────────────────────────────────
 
     @Override
+    @Transactional
     public LoginResponse login(LoginRequest request) {
         // 1. Find user by email
         User user = userRepository.findByEmail(request.getEmail().trim().toLowerCase())
@@ -82,28 +88,48 @@ public class AuthServiceImpl implements AuthService {
     // ─────────────────────────────────────────────────────────────────────────
 
     @Override
+    @Transactional
     public void register(RegisterRequest request) {
         log.warn("AuthServiceImpl.register() - NOT YET IMPLEMENTED");
         throw new UnsupportedOperationException("register() not yet implemented");
     }
 
+    // ============================================================
+    // SEND / RESEND OTP
+    // ============================================================
+
     @Override
+    @Transactional
     public void sendOtp(AuthDtos.OtpRequest request) {
         log.warn("AuthServiceImpl.sendOtp() - NOT YET IMPLEMENTED");
         throw new UnsupportedOperationException("sendOtp() not yet implemented");
     }
 
+    // ============================================================
+    // VERIFY OTP
+    // ============================================================
+
     @Override
+    @Transactional
     public void verifyOtp(AuthDtos.OtpVerifyRequest request) {
         log.warn("AuthServiceImpl.verifyOtp() - NOT YET IMPLEMENTED");
         throw new UnsupportedOperationException("verifyOtp() not yet implemented");
     }
 
+    // ============================================================
+    // RESET PASSWORD
+    // ============================================================
+
     @Override
+    @Transactional
     public void resetPassword(AuthDtos.PasswordResetRequest request) {
         log.warn("AuthServiceImpl.resetPassword() - NOT YET IMPLEMENTED");
         throw new UnsupportedOperationException("resetPassword() not yet implemented");
     }
+
+    // ============================================================
+    // LOGOUT
+    // ============================================================
 
     @Override
     public void logout(String token) {

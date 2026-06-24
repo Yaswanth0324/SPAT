@@ -3,8 +3,12 @@ package com.sapt.security.jwt;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.UnsupportedJwtException;
 import io.jsonwebtoken.security.Keys;
+import io.jsonwebtoken.security.SignatureException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
@@ -22,6 +26,7 @@ import java.util.function.Function;
  * Token subject: authUser.id (as String) — so controllers can do Long.parseLong(username)
  * Additional claims: "role" (e.g. "SYSTEM_ADMIN")
  */
+@Slf4j
 @Component
 public class JwtUtil {
 

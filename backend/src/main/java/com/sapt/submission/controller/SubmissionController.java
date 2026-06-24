@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.*;
  * TODO (Submission Team): Add endpoints for CRUD and review workflow.
  */
 @RestController
-@RequestMapping("/api/submission")
+@RequestMapping("/submission")
 @RequiredArgsConstructor
 public class SubmissionController {
 
@@ -25,3 +25,4 @@ public class SubmissionController {
     // TODO: @PutMapping("/{id}/review") @PreAuthorize("hasRole('MENTOR') or hasRole('HOD')") reviewSubmission()
     // TODO: @DeleteMapping("/{id}")  @PreAuthorize("hasRole('STUDENT')")    withdrawSubmission()
 }
+

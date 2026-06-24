@@ -1,18 +1,14 @@
 package com.sapt.hod.entity;
 
-import jakarta.persistence.*;
-import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
-import java.time.LocalDateTime;
-
 /**
- * Hod - Head of Department MySQL Entity.
- * TODO (HOD Team): Add department, college reference, etc.
+ * @deprecated The separate `hods` table no longer exists.
+ *
+ * All HOD data is now stored in the unified `users` table
+ * with role = HOD.
+ *
+ * Use {@link com.sapt.auth.entity.User} with role filter HOD.
  */
-@Entity
-@Table(name = "hods")
-@Data @Builder @NoArgsConstructor @AllArgsConstructor
+@Deprecated(since = "2.0", forRemoval = true)
 public class Hod {
 
     @Id

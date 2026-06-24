@@ -55,7 +55,7 @@ const studentTestimonials = [
     name: 'Priya Nair', 
     dept: 'CS Engineering, MIT', 
     rating: 5, 
-    text: 'SPARK has completely transformed how I track my co-curricular accomplishments. The interface is gorgeous, and seeing my star level increase keeps me incredibly motivated!' 
+    text: 'SPAT has completely transformed how I track my co-curricular accomplishments. The interface is gorgeous, and seeing my star level increase keeps me incredibly motivated!' 
   },
   { 
     name: 'Arjun Krishnan', 
@@ -70,13 +70,13 @@ const managementTestimonials = [
     name: 'Dr. Priya Sharma', 
     dept: 'HOD, CS Engineering, MIT', 
     rating: 5, 
-    text: 'Managing student activity credits used to be an administrative nightmare of spreadsheets and lost certificates. SPARK has streamlined the entire verification process into a seamless departmental dashboard.' 
+    text: 'Managing student activity credits used to be an administrative nightmare of spreadsheets and lost certificates. SPAT has streamlined the entire verification process into a seamless departmental dashboard.' 
   },
   { 
     name: 'Prof. Arun Vijay', 
     dept: 'Senior Mentor, MIT College of Eng.', 
     rating: 5, 
-    text: 'As a mentor, SPARK allows me to stay connected with my students\' extracurricular progress. The approval workflow is highly intuitive, allowing me to review and validate submissions in just a single click.' 
+    text: 'As a mentor, SPAT allows me to stay connected with my students\' extracurricular progress. The approval workflow is highly intuitive, allowing me to review and validate submissions in just a single click.' 
   }
 ];
 
@@ -148,14 +148,14 @@ const HomePage = () => {
 
           <h1 className="font-display text-6xl md:text-8xl font-black leading-none tracking-tight"
             style={{ color: headingColor }}>
-            SPARK
+            SPAT
             <span className="block text-xl md:text-3xl mt-3.5 font-bold tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-primary-500 via-orange-500 to-amber-500">
-              Student Performance, Activities & Records Keeper
+              Student Performance, Activities & Records Tracker
             </span>
           </h1>
 
           <p className="text-lg md:text-xl max-w-2xl mx-auto leading-relaxed font-normal" style={{ color: bodyTextColor }}>
-            SPARK helps students track co-curricular activities, earn credits, and showcase achievements — all in one beautiful, intelligent platform.
+            SPAT helps students track co-curricular activities, earn credits, and showcase achievements — all in one beautiful, intelligent platform.
           </p>
 
           <div className="flex flex-wrap gap-4 justify-center pt-1.5">
@@ -336,7 +336,7 @@ const HomePage = () => {
           <div className="rounded-3xl p-12 shadow-glow"
             style={{ background: cardBg, border: `1px solid rgba(234,88,12,0.3)`, backdropFilter: 'blur(12px)' }}>
             <h2 className="font-display text-4xl font-bold mb-4" style={{ color: headingColor }}>Ready to Track Your Journey?</h2>
-            <p className="mb-8" style={{ color: bodyTextColor }}>Join thousands of students already using SPARK to showcase their achievements.</p>
+            <p className="mb-8" style={{ color: bodyTextColor }}>Join thousands of students already using SPAT to showcase their achievements.</p>
             <button onClick={handleGetStarted} className="btn-primary text-base px-10 py-4 shadow-glow-lg text-lg">
               Get Started — It's Free
             </button>
@@ -349,11 +349,11 @@ const HomePage = () => {
         <div className="max-w-7xl mx-auto grid md:grid-cols-3 gap-10">
           <div>
             <div className="flex items-center gap-3 mb-4">
-              <img src={isDark ? "/spark-logo1.png" : "/spark-logo2.png"} className="w-8 h-8 object-contain rounded-xl" alt="SPARK Logo" />
-              <span className="font-display font-bold text-xl" style={{ color: headingColor }}>SPARK</span>
+              <img src={isDark ? "/spat-logo1.png" : "/spat-logo2.png"} className="w-8 h-8 object-contain rounded-xl" alt="SPAT Logo" />
+              <span className="font-display font-bold text-xl" style={{ color: headingColor }}>SPAT</span>
             </div>
             <p className="text-sm leading-relaxed" style={{ color: subtleColor }}>
-              Student Performance, Activities & Records Keeper — Empowering students to document, track, and celebrate their achievements.
+              Student Performance, Activities & Records Tracker — Empowering students to document, track, and celebrate their achievements.
             </p>
             <div className="flex gap-3 mt-4">
               {[ExternalLink, Code2, Network].map((Icon, i) => (
@@ -380,7 +380,7 @@ const HomePage = () => {
             <h3 className="font-semibold mb-4" style={{ color: headingColor }}>Contact</h3>
             <div className="space-y-3">
               <div className="flex items-center gap-3 text-sm" style={{ color: subtleColor }}>
-                <Mail className="w-4 h-4 text-primary-500" /><span>support@spark.edu.in</span>
+                <Mail className="w-4 h-4 text-primary-500" /><span>support@spat.edu.in</span>
               </div>
               <div className="flex items-center gap-3 text-sm" style={{ color: subtleColor }}>
                 <Phone className="w-4 h-4 text-primary-500" /><span>+91 98765 43210</span>
@@ -393,7 +393,7 @@ const HomePage = () => {
         </div>
         <div className="max-w-7xl mx-auto mt-10 pt-6 text-center text-sm"
           style={{ borderTop: `1px solid ${dividerColor}`, color: mutedColor }}>
-          © {new Date().getFullYear()} SPARK — Student Performance, Activities & Records Keeper. All rights reserved.
+          © {new Date().getFullYear()} SPAT — Student Performance, Activities & Records Tracker. All rights reserved.
         </div>
       </footer>
     </div>

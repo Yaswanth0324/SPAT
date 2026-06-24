@@ -1,7 +1,9 @@
 package com.sapt.auth.dto;
 
+import com.sapt.common.enums.UserRole;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
@@ -11,9 +13,8 @@ import lombok.Data;
  * ============================================================
  * Used in: POST /api/auth/register
  *
- * TODO (Auth Team):
- *  - Add role-specific fields if needed (e.g., rollNumber for students)
- *  - Or keep it minimal and use separate profile-setup endpoints
+ * The role field determines which module the user belongs to.
+ * After registration, an OTP is sent to verify the email.
  * ============================================================
  */
 @Data
@@ -30,5 +31,18 @@ public class RegisterRequest {
     @Size(min = 6, message = "Password must be at least 6 characters")
     private String password;
 
-    // TODO: Add more registration fields as per requirements
+    /**
+     * The role this user is registering as.
+     * Accepted values: STUDENT, MENTOR, HOD, COLLEGE_ADMIN, SYSTEM_ADMIN
+     */
+    @NotNull(message = "Role is required")
+    private UserRole role;
+
+    private String college;
+
+    private String department;
+
+    private String mentorName;
+
+    private String idCardUrl;
 }

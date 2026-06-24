@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
  * TODO (HOD Team): Add endpoints for profile, mentors, submissions, department stats.
  */
 @RestController
-@RequestMapping("/api/hod")
+@RequestMapping("/hod")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('HOD')")
 public class HodController {
@@ -21,3 +21,4 @@ public class HodController {
     // TODO: @GetMapping("/submissions") getDepartmentSubmissions()
     // TODO: @GetMapping("/stats") getDepartmentStats()
 }
+

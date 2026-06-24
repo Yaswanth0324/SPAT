@@ -3,9 +3,10 @@ import { User, Mail, Phone, Lock, Upload, KeyRound, ShieldAlert, CheckCircle2 } 
 import { useAuth } from '../../../context/AuthContext';
 import { updateUser, getUsers } from '../../../utils/localStorage';
 import { useToast, Avatar } from '../../../components/ui/UIComponents';
+import { apiUpdateProfile } from '../../../utils/api';
 
 export const MentorProfile = () => {
-  const { user } = useAuth();
+  const { user, login } = useAuth();
   const { showToast, ToastComponent } = useToast();
 
   // --- Profile Edit State ---
@@ -38,44 +39,42 @@ export const MentorProfile = () => {
     }
 
     const reader = new FileReader();
-    reader.onloadend = () => {
+    reader.onloadend = async () => {
       const base64String = reader.result;
-      updateUser(user.id, { profileImage: base64String });
-      showToast('Profile image updated successfully! ✓', 'success');
+      try {
+        const res = await apiUpdateProfile(user.id, { profileImage: base64String });
+        login(res.user);
+        showToast('Profile image updated successfully! ✓', 'success');
+      } catch (err) {
+        showToast(err.message || 'Failed to upload profile image! ⚠️', 'error');
+      }
     };
     reader.readAsDataURL(file);
   };
 
   // --- Save Contact Info ---
-  const handleSaveContactInfo = (e) => {
+  const handleSaveContactInfo = async (e) => {
     e.preventDefault();
     if (!name.trim() || !email.trim()) {
       showToast('Name and Email cannot be empty! ⚠️', 'error');
       return;
     }
-    
-    // Check if email already registered (exclude self)
-    const emailExists = getUsers().some(u => u.email.toLowerCase() === email.trim().toLowerCase() && u.id !== user.id);
-    if (emailExists) {
-      showToast('Email address is already in use by another user! ⚠️', 'error');
-      return;
-    }
 
-    updateUser(user.id, { name, email, phone });
-    setIsEditingInfo(false);
-    showToast('Contact details saved successfully! ✓', 'success');
+    try {
+      const res = await apiUpdateProfile(user.id, { name, email, phone });
+      login(res.user);
+      setIsEditingInfo(false);
+      showToast('Contact details saved successfully! ✓', 'success');
+    } catch (err) {
+      showToast(err.message || 'Failed to save contact details! ⚠️', 'error');
+    }
   };
 
   // --- Change Password ---
-  const handlePasswordChange = (e) => {
+  const handlePasswordChange = async (e) => {
     e.preventDefault();
     if (!currentPassword || !newPassword || !confirmPassword) {
       showToast('Please fill in all password fields! ⚠️', 'error');
-      return;
-    }
-
-    if (currentPassword !== user.password) {
-      showToast('Current password is incorrect! ⚠️', 'error');
       return;
     }
 
@@ -89,11 +88,19 @@ export const MentorProfile = () => {
       return;
     }
 
-    updateUser(user.id, { password: newPassword });
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
-    showToast('Password updated successfully! ✓', 'success');
+    try {
+      const res = await apiUpdateProfile(user.id, {
+        password: newPassword,
+        currentPassword: currentPassword
+      });
+      login(res.user);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      showToast('Password updated successfully! ✓', 'success');
+    } catch (err) {
+      showToast(err.message || 'Failed to update password! ⚠️', 'error');
+    }
   };
 
   // --- Submit Handover Request ---

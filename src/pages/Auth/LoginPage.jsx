@@ -52,7 +52,7 @@ export const AdminLoginPage = () => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="label-field">Admin Email</label>
-            <input type="email" className="input-field" placeholder="admin@spark.edu" value={form.email} onChange={e => setForm({...form, email: e.target.value})} required />
+            <input type="email" className="input-field" placeholder="admin@spat.edu" value={form.email} onChange={e => setForm({...form, email: e.target.value})} required />
           </div>
           <div>
             <label className="label-field">Admin ID</label>
@@ -202,25 +202,46 @@ const LoginPage = () => {
   const [showForgot, setShowForgot] = useState(false);
 
   // Dynamic department state
+  const [colleges, setColleges] = useState([]);
   const [availableDepts, setAvailableDepts] = useState([]);
   const [isOtherDept, setIsOtherDept] = useState(false);
   const [customDept, setCustomDept] = useState('');
   const [savingDept, setSavingDept] = useState(false);
   const [deptSaved, setDeptSaved] = useState(false);
 
+  // Load colleges on mount
+  useEffect(() => {
+    let active = true;
+    const loadColleges = async () => {
+      const list = await apiGetColleges();
+      if (active) setColleges(list);
+    };
+    loadColleges();
+    return () => { active = false; };
+  }, []);
+
   // Load departments whenever college changes
   useEffect(() => {
-    if (form.college) {
-      const depts = getDepartmentsByCollege(form.college);
-      setAvailableDepts(depts);
-    } else {
+    if (!form.college) {
       setAvailableDepts([]);
+      setForm(prev => ({ ...prev, department: '' }));
+      setIsOtherDept(false);
+      setCustomDept('');
+      setDeptSaved(false);
+      return;
     }
+    let active = true;
+    const loadDepts = async () => {
+      const list = await apiGetDepartments(form.college);
+      if (active) setAvailableDepts(list);
+    };
+    loadDepts();
     // Reset department fields when college changes
     setForm(prev => ({ ...prev, department: '' }));
     setIsOtherDept(false);
     setCustomDept('');
     setDeptSaved(false);
+    return () => { active = false; };
   }, [form.college]);
 
   const handleDeptChange = (e) => {
@@ -246,7 +267,10 @@ const LoginPage = () => {
     setSavingDept(true);
     setTimeout(() => {
       addDepartmentToCollege(form.college, trimmed);
-      setAvailableDepts(getDepartmentsByCollege(form.college));
+      setAvailableDepts(prev => {
+        if (prev.includes(trimmed)) return prev;
+        return [...prev, trimmed];
+      });
       setForm(prev => ({ ...prev, department: trimmed }));
       setIsOtherDept(false);
       setDeptSaved(true);
@@ -255,34 +279,33 @@ const LoginPage = () => {
     }, 400);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => {
-      const res = loginUser(form.email, form.password, form.role);
-      if (res.success) {
-        // Block pending / rejected students
-        if (res.user.role === ROLES.STUDENT && res.user.status === 'pending') {
-          showToast('Your account is pending mentor approval. Please wait for your mentor to approve your registration.', 'warning', 6000);
-          setLoading(false);
-          return;
-        }
-        if (res.user.role === ROLES.STUDENT && res.user.status === 'rejected') {
-          showToast('Your registration has been rejected by your mentor. Please contact your mentor or register again.', 'error', 6000);
-          setLoading(false);
-          return;
-        }
-        login(res.user);
-        const role = res.user.role;
-        if (role === ROLES.HOD) navigate('/dashboard/hod');
-        else if (role === ROLES.MENTOR) navigate('/dashboard/mentor');
-        else if (role === ROLES.STUDENT) navigate('/dashboard/student');
-        else showToast('Unknown role.', 'error');
-      } else {
-        showToast('Invalid credentials. Check demo hints below.', 'error');
+    try {
+      const res = await apiLogin(form.email, form.password, form.role);
+      const userRole = res.user.role;
+
+      // Block pending / rejected accounts
+      if (res.user.status === 'pending') {
+        showToast('Your account is pending approval. Please wait.', 'warning', 6000);
+        return;
       }
+      if (res.user.status === 'rejected') {
+        showToast('Your registration was rejected. Please contact your mentor.', 'error', 6000);
+        return;
+      }
+
+      login(res.user);
+      if (userRole === ROLES.HOD) navigate('/dashboard/hod');
+      else if (userRole === ROLES.MENTOR) navigate('/dashboard/mentor');
+      else if (userRole === ROLES.STUDENT) navigate('/dashboard/student');
+      else showToast('Unknown role.', 'error');
+    } catch (err) {
+      showToast(err.message || 'Invalid credentials', 'error');
+    } finally {
       setLoading(false);
-    }, 800);
+    }
   };
 
   return (
@@ -311,7 +334,7 @@ const LoginPage = () => {
               required
             >
               <option value="">Select your College</option>
-              {getColleges().map(c => <option key={c.id || c.name} value={c.name}>{c.name}</option>)}
+              {colleges.map(c => <option key={c.id || c.name} value={c.name}>{c.name}</option>)}
             </select>
           </div>
 

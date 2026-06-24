@@ -1,8 +1,10 @@
 package com.sapt.notification.otp;
 
 import com.sapt.notification.mail.MailService;
+import com.sapt.notification.templates.MailTemplates;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 /**
@@ -13,11 +15,8 @@ import org.springframework.stereotype.Service;
  *  - Email verification (during registration)
  *  - Password reset (forgot password flow)
  *
- * TODO (Notification Team):
- *  - Implement sendEmailVerificationOtp()
- *  - Implement sendPasswordResetOtp()
- *  - Use MailTemplates to build HTML content
- *  - Use MailService to send the email
+ * Methods are @Async — they run in a background thread so
+ * that the API response is not delayed by mail sending.
  * ============================================================
  */
 @Slf4j
@@ -28,36 +27,41 @@ public class OtpMailService {
     private final MailService mailService;
 
     /**
-     * Sends an OTP email for email verification.
+     * Sends an OTP email for email address verification.
+     * Called after user registration.
      *
-     * @param toEmail  The recipient's email address
-     * @param otp      The 6-digit OTP to include in the email
-     *
-     * TODO: Implement this method:
-     *  1. Build HTML body using MailTemplates.otpTemplate(otp, purpose)
-     *  2. Call mailService.sendHtmlMail(toEmail, subject, htmlBody)
+     * @param toEmail  Recipient's email address
+     * @param fullName Recipient's display name (used in email body)
+     * @param otp      The 6-digit OTP string
      */
-    public void sendEmailVerificationOtp(String toEmail, String otp) {
-        // TODO: Build HTML template and send
-        // String subject = "SAPT - Email Verification OTP";
-        // String htmlBody = MailTemplates.buildOtpEmail(otp, "Email Verification");
-        // mailService.sendHtmlMail(toEmail, subject, htmlBody);
-        log.warn("OtpMailService.sendEmailVerificationOtp() - NOT YET IMPLEMENTED for: {}", toEmail);
+    @Async
+    public void sendEmailVerificationOtp(String toEmail, String fullName, String otp) {
+        try {
+            String subject  = "SAPT - Verify Your Email Address";
+            String htmlBody = MailTemplates.buildOtpEmail(otp, "Email Verification", fullName);
+            mailService.sendHtmlMail(toEmail, subject, htmlBody);
+            log.info("Email verification OTP sent to: {}", toEmail);
+        } catch (Exception e) {
+            log.error("Failed to send email verification OTP to {}: {}", toEmail, e.getMessage());
+        }
     }
 
     /**
      * Sends an OTP email for password reset.
+     * Called when user requests forgot-password flow.
      *
-     * @param toEmail  The recipient's email address
-     * @param otp      The 6-digit OTP to include in the email
-     *
-     * TODO: Implement this method
+     * @param toEmail Recipient's email address
+     * @param otp     The 6-digit OTP string
      */
+    @Async
     public void sendPasswordResetOtp(String toEmail, String otp) {
-        // TODO: Build HTML template and send
-        // String subject = "SAPT - Password Reset OTP";
-        // String htmlBody = MailTemplates.buildOtpEmail(otp, "Password Reset");
-        // mailService.sendHtmlMail(toEmail, subject, htmlBody);
-        log.warn("OtpMailService.sendPasswordResetOtp() - NOT YET IMPLEMENTED for: {}", toEmail);
+        try {
+            String subject  = "SAPT - Password Reset OTP";
+            String htmlBody = MailTemplates.buildOtpEmail(otp, "Password Reset", null);
+            mailService.sendHtmlMail(toEmail, subject, htmlBody);
+            log.info("Password reset OTP sent to: {}", toEmail);
+        } catch (Exception e) {
+            log.error("Failed to send password reset OTP to {}: {}", toEmail, e.getMessage());
+        }
     }
 }
