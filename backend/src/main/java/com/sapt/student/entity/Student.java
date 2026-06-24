@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 
 /**
  * Student - MySQL Entity
- * Links to AuthUser via authUserId for authentication.
+ * Links to the unified users table via userId for authentication.
  * TODO (Student Team): Add department, batch, mentor reference, etc.
  */
 @Entity
@@ -20,9 +20,9 @@ public class Student {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /** Foreign key to auth_users table */
-    @Column(nullable = false, unique = true)
-    private Long authUserId;
+    /** FK → users.id (UUID string) */
+    @Column(nullable = false, unique = true, length = 36)
+    private String userId;
 
     private String fullName;
     private String rollNumber;

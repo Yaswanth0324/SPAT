@@ -19,8 +19,9 @@ public class Mentor {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
-    private Long authUserId;
+    /** FK → users.id (UUID string) */
+    @Column(nullable = false, unique = true, length = 36)
+    private String userId;
 
     private String fullName;
     private String employeeId;

@@ -1,6 +1,7 @@
 package com.sapt.security.jwt;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
@@ -8,6 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
+import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Date;
 import java.util.HashMap;
@@ -15,21 +17,10 @@ import java.util.Map;
 import java.util.function.Function;
 
 /**
- * ============================================================
- * JwtUtil - JWT Token Utility
- * ============================================================
- * Responsibilities:
- *  - Generate JWT tokens for authenticated users
- *  - Validate incoming JWT tokens
- *  - Extract claims (username, role, expiration) from tokens
+ * JwtUtil - JWT Token generation, validation, and claim extraction.
  *
- * TODO (Auth Team):
- *  - Implement generateToken()
- *  - Implement validateToken()
- *  - Implement extractUsername()
- *  - Implement extractRole() for role-based access
- *  - Handle token refresh logic if needed
- * ============================================================
+ * Token subject: authUser.id (as String) — so controllers can do Long.parseLong(username)
+ * Additional claims: "role" (e.g. "SYSTEM_ADMIN")
  */
 @Component
 public class JwtUtil {
@@ -38,79 +29,82 @@ public class JwtUtil {
     private String secret;
 
     @Value("${sapt.jwt.expiration}")
-    private long expiration;
+    private long expiration; // milliseconds
 
-    // --------------------------------------------------------
-    // Generate token for a user
-    // TODO: Implement this method
-    // --------------------------------------------------------
+    // ─────────────────────────────────────────────────────────────────────────
+    // Public API
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Generate a signed JWT for the given UserDetails.
+     * Subject = username (which is the authUser.id as string).
+     * Extra claim: "role" = first GrantedAuthority stripped of "ROLE_" prefix.
+     */
     public String generateToken(UserDetails userDetails) {
-        // TODO: Build claims map with username and role
-        // TODO: Call createToken() with claims and subject
-        throw new UnsupportedOperationException("generateToken() not yet implemented");
+        Map<String, Object> claims = new HashMap<>();
+        // Store the role as a claim so the frontend can read it
+        if (!userDetails.getAuthorities().isEmpty()) {
+            String authority = userDetails.getAuthorities().iterator().next().getAuthority();
+            claims.put("role", authority.startsWith("ROLE_") ? authority.substring(5) : authority);
+        }
+        return createToken(claims, userDetails.getUsername());
     }
 
-    // --------------------------------------------------------
-    // Validate token against user details
-    // TODO: Implement this method
-    // --------------------------------------------------------
+    /**
+     * Validate token: checks username match and expiry.
+     */
     public boolean validateToken(String token, UserDetails userDetails) {
-        // TODO: Extract username from token
-        // TODO: Check if username matches and token is not expired
-        throw new UnsupportedOperationException("validateToken() not yet implemented");
+        try {
+            final String username = extractUsername(token);
+            return username.equals(userDetails.getUsername()) && !isTokenExpired(token);
+        } catch (JwtException | IllegalArgumentException e) {
+            return false;
+        }
     }
 
-    // --------------------------------------------------------
-    // Extract username from token
-    // TODO: Implement this method
-    // --------------------------------------------------------
+    /**
+     * Extract the subject (authUser.id) from a token.
+     */
     public String extractUsername(String token) {
-        // TODO: Extract subject claim from token
-        throw new UnsupportedOperationException("extractUsername() not yet implemented");
+        return extractClaim(token, Claims::getSubject);
     }
 
-    // --------------------------------------------------------
-    // Extract expiration date from token
-    // TODO: Implement this method
-    // --------------------------------------------------------
+    /**
+     * Extract expiration date from a token.
+     */
     public Date extractExpiration(String token) {
-        // TODO: Extract expiration claim from token
-        throw new UnsupportedOperationException("extractExpiration() not yet implemented");
+        return extractClaim(token, Claims::getExpiration);
     }
 
-    // --------------------------------------------------------
-    // Check if token is expired
-    // TODO: Implement this method
-    // --------------------------------------------------------
+    // ─────────────────────────────────────────────────────────────────────────
+    // Private helpers
+    // ─────────────────────────────────────────────────────────────────────────
+
     private boolean isTokenExpired(String token) {
-        // TODO: Compare expiration date with current date
-        throw new UnsupportedOperationException("isTokenExpired() not yet implemented");
+        return extractExpiration(token).before(new Date());
     }
 
-    // --------------------------------------------------------
-    // Internal: Create token with claims
-    // TODO: Implement this method
-    // --------------------------------------------------------
     private String createToken(Map<String, Object> claims, String subject) {
-        // TODO: Use Jwts.builder() with claims, subject, issuedAt, expiration, signing key
-        throw new UnsupportedOperationException("createToken() not yet implemented");
+        return Jwts.builder()
+                .setClaims(claims)
+                .setSubject(subject)
+                .setIssuedAt(new Date(System.currentTimeMillis()))
+                .setExpiration(new Date(System.currentTimeMillis() + expiration))
+                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+                .compact();
     }
 
-    // --------------------------------------------------------
-    // Internal: Get signing key
-    // TODO: Implement this method
-    // --------------------------------------------------------
     private Key getSigningKey() {
-        // TODO: Decode secret and return Keys.hmacShaKeyFor(...)
-        throw new UnsupportedOperationException("getSigningKey() not yet implemented");
+        byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
+        return Keys.hmacShaKeyFor(keyBytes);
     }
 
-    // --------------------------------------------------------
-    // Internal: Extract a specific claim
-    // TODO: Implement this method
-    // --------------------------------------------------------
     private <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
-        // TODO: Extract all claims and apply resolver function
-        throw new UnsupportedOperationException("extractClaim() not yet implemented");
+        final Claims claims = Jwts.parserBuilder()
+                .setSigningKey(getSigningKey())
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+        return claimsResolver.apply(claims);
     }
 }

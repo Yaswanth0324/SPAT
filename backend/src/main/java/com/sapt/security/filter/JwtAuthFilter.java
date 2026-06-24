@@ -6,6 +6,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -17,22 +18,15 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 
 /**
- * ============================================================
- * JwtAuthFilter - JWT Authentication Filter
- * ============================================================
- * Intercepts every HTTP request and validates the JWT token
- * from the Authorization header before it reaches controllers.
+ * JwtAuthFilter - JWT Authentication Filter.
  *
- * Filter Order: Runs BEFORE UsernamePasswordAuthenticationFilter
+ * Intercepts every HTTP request, extracts and validates the Bearer JWT token,
+ * and sets the authentication in the SecurityContext so Spring Security
+ * can apply @PreAuthorize rules in controllers.
  *
- * TODO (Auth Team):
- *  - Implement doFilterInternal()
- *  - Extract Authorization header (Bearer token)
- *  - Validate JWT token using JwtUtil
- *  - Set authentication in SecurityContextHolder if valid
- *  - Pass request down the filter chain
- * ============================================================
+ * Filter Order: runs BEFORE UsernamePasswordAuthenticationFilter.
  */
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class JwtAuthFilter extends OncePerRequestFilter {
@@ -40,20 +34,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private final JwtUtil jwtUtil;
     private final UserDetailsService userDetailsService;
 
-    /**
-     * Core filter logic — intercepts every HTTP request.
-     *
-     * TODO: Implement the following steps:
-     *  1. Extract the "Authorization" header
-     *  2. Check if it starts with "Bearer "
-     *  3. Extract the JWT token from the header
-     *  4. Extract username from the token using jwtUtil
-     *  5. Load UserDetails from userDetailsService
-     *  6. Validate token using jwtUtil.validateToken()
-     *  7. Create UsernamePasswordAuthenticationToken
-     *  8. Set it in SecurityContextHolder
-     *  9. Continue filter chain: filterChain.doFilter(request, response)
-     */
     @Override
     protected void doFilterInternal(
             HttpServletRequest request,
@@ -61,29 +41,43 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             FilterChain filterChain
     ) throws ServletException, IOException {
 
-        // TODO: Implement JWT extraction and validation logic here
-        //
-        // String authHeader = request.getHeader("Authorization");
-        // String token = null;
-        // String username = null;
-        //
-        // if (authHeader != null && authHeader.startsWith("Bearer ")) {
-        //     token = authHeader.substring(7);
-        //     username = jwtUtil.extractUsername(token);
-        // }
-        //
-        // if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-        //     UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-        //     if (jwtUtil.validateToken(token, userDetails)) {
-        //         UsernamePasswordAuthenticationToken authToken =
-        //             new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-        //         authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-        //         SecurityContextHolder.getContext().setAuthentication(authToken);
-        //     }
-        // }
-        //
-        // filterChain.doFilter(request, response);
+        final String authHeader = request.getHeader("Authorization");
 
-        filterChain.doFilter(request, response); // PLACEHOLDER - replace with real logic above
+        // If no Bearer token present, skip this filter
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        final String token    = authHeader.substring(7);
+        String username = null;
+
+        try {
+            username = jwtUtil.extractUsername(token);
+        } catch (Exception e) {
+            log.warn("Failed to extract username from JWT: {}", e.getMessage());
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        // Only authenticate if not already set in context
+        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            try {
+                UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+
+                if (jwtUtil.validateToken(token, userDetails)) {
+                    UsernamePasswordAuthenticationToken authToken =
+                            new UsernamePasswordAuthenticationToken(
+                                    userDetails, null, userDetails.getAuthorities()
+                            );
+                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                }
+            } catch (Exception e) {
+                log.warn("JWT validation failed for user '{}': {}", username, e.getMessage());
+            }
+        }
+
+        filterChain.doFilter(request, response);
     }
 }

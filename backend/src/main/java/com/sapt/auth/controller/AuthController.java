@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
  * TODO (Auth Team): AuthServiceImpl must be implemented to activate these endpoints.
  */
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/auth")
 @RequiredArgsConstructor
 public class AuthController {
 
@@ -43,6 +43,14 @@ public class AuthController {
     public ResponseEntity<ApiResponse<Void>> verifyOtp(@Valid @RequestBody AuthDtos.OtpVerifyRequest request) {
         authService.verifyOtp(request);
         return ResponseEntity.ok(ApiResponse.success("OTP verified successfully"));
+    }
+
+    @GetMapping("/verify")
+    public ResponseEntity<Void> verifyUserLink(@RequestParam("email") String email) {
+        authService.verifyEmailDirect(email);
+        return ResponseEntity.status(org.springframework.http.HttpStatus.FOUND)
+                .location(java.net.URI.create("http://localhost:5173/admin-login"))
+                .build();
     }
 
     @PostMapping("/password/reset")

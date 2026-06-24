@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 
 /**
  * CollegeAdmin - College Administrator MySQL Entity.
- * TODO (CollegeAdmin Team): Add college reference, permissions, etc.
+ * Links an AuthUser (credentials) to a specific College.
  */
 @Entity
 @Table(name = "college_admins")
@@ -19,14 +19,25 @@ public class CollegeAdmin {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
-    private Long authUserId;
-
-    private String fullName;
-    private String employeeId;
-    private Long collegeId;
+    /** FK → users.id (UUID string) */
+    @Column(nullable = false, unique = true, length = 36)
+    private String userId;
 
     @Column(nullable = false)
+    private String fullName;
+
+    /** Institutional employee / admin ID (e.g. "CA123456") */
+    private String employeeId;
+
+    /** FK → colleges.id */
+    @Column(nullable = false)
+    private Long collegeId;
+
+    /** Phone / mobile number */
+    private String phone;
+
+    @Column(nullable = false)
+    @Builder.Default
     private boolean active = true;
 
     @CreationTimestamp @Column(updatable = false)

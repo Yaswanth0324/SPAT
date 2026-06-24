@@ -12,7 +12,7 @@ import java.util.Optional;
  */
 @Repository
 public interface MentorRepository extends JpaRepository<Mentor, Long> {
-    Optional<Mentor> findByAuthUserId(Long authUserId);
+    Optional<Mentor> findByUserId(String userId);
     List<Mentor> findByHodId(Long hodId);
     List<Mentor> findByCollegeId(Long collegeId);
 }

@@ -39,4 +39,14 @@ public class LoginResponse {
 
     /** User's display name */
     private String fullName;
+
+    /** User's database ID (UUID string) */
+    private String id;
+
+    /** User's college name */
+    private String college;
+
+    /** User's profile picture / avatar */
+    private String avatarUrl;
 }
+

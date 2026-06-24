@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   Building2, Users, TrendingUp, TrendingDown, Award, BookOpen,
   GraduationCap, FileText, Star, Clock, RefreshCw, ChevronRight,
@@ -10,37 +10,7 @@ import {
   PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip,
   Legend, ResponsiveContainer,
 } from 'recharts';
-
-
-// ─── Analytics Data (connect to backend API — currently empty) ────────────────
-
-const KPI_DATA = {
-  totalColleges:    { value: 0, trend: '—', up: true },
-  activeColleges:   { value: 0, trend: '—', up: true },
-  inactiveColleges: { value: 0, trend: '—', up: false },
-  totalUsers:       { value: 0, trend: '—', up: true },
-  totalDepartments: { value: 0, trend: '—', up: true },
-  totalHODs:        { value: 0, trend: '—', up: true },
-  totalMentors:     { value: 0, trend: '—', up: true },
-  totalStudents:    { value: 0, trend: '—', up: true },
-  totalSubmissions: { value: 0, trend: '—', up: true },
-  totalCredits:     { value: 0, trend: '—', up: true },
-};
-
-const ACTIVE_COLLEGES   = [];
-const INACTIVE_COLLEGES = [];
-const MONTHLY_GROWTH        = [];
-const SUBMISSION_ANALYTICS  = [];
-const COLLEGE_ACTIVITY_PIE  = [];
-const USER_ROLE_PIE         = [];
-const TOP_COLLEGES  = [];
-const TOP_STUDENTS  = [];
-const TOP_MENTORS   = [];
-const RECENT_ACTIVITY  = [];
-const PENDING_ACTIONS  = [];
-const COLLEGE_HEALTH   = [];
-const COLLEGE_BAR_DATA = [];
-
+import { systemAdminApi } from '../../../utils/api';
 
 
 // ─── Custom Tooltip ────────────────────────────────────────────────────────────
@@ -59,22 +29,25 @@ const CustomTooltip = ({ active, payload, label }) => {
 };
 
 // ─── KPI Card ─────────────────────────────────────────────────────────────────
-const KpiCard = ({ icon: Icon, label, value, trend, up, gradient, onClick }) => (
+const KpiCard = ({ icon: Icon, label, value, trend, up, gradient, onClick, loading }) => (
   <div
     onClick={onClick}
     className={`relative overflow-hidden rounded-2xl p-5 text-white shadow-lg transition-all duration-300 ${onClick ? 'cursor-pointer hover:scale-[1.03] hover:shadow-xl' : ''}`}
     style={{ background: gradient }}
   >
-    {/* Decorative blob */}
     <div className="absolute -right-4 -top-4 w-24 h-24 rounded-full opacity-20" style={{ background: 'rgba(255,255,255,0.3)' }} />
     <div className="absolute -right-2 -bottom-4 w-16 h-16 rounded-full opacity-10" style={{ background: 'rgba(255,255,255,0.4)' }} />
 
     <div className="relative z-10 flex items-start justify-between">
       <div className="flex-1">
         <p className="text-white/75 text-xs font-semibold uppercase tracking-wider mb-2">{label}</p>
-        <p className="text-3xl font-extrabold leading-none">
-          {typeof value === 'number' && value >= 1000 ? value.toLocaleString() : value}
-        </p>
+        {loading ? (
+          <div className="h-8 w-16 bg-white/20 rounded-lg animate-pulse" />
+        ) : (
+          <p className="text-3xl font-extrabold leading-none">
+            {typeof value === 'number' && value >= 1000 ? value.toLocaleString() : value}
+          </p>
+        )}
         <div className={`flex items-center gap-1 mt-2 text-xs font-semibold ${up ? 'text-green-200' : 'text-red-200'}`}>
           {up ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
           <span>{trend} vs last month</span>
@@ -106,63 +79,12 @@ const SectionHeader = ({ icon: Icon, title, subtitle }) => (
   </div>
 );
 
-// ─── Rank Badge ────────────────────────────────────────────────────────────────
-const RankBadge = ({ rank }) => {
-  const colors = {
-    1: 'bg-yellow-400 text-yellow-900',
-    2: 'bg-gray-300 text-gray-800',
-    3: 'bg-amber-600 text-white',
-  };
-  return (
-    <span className={`inline-flex w-7 h-7 items-center justify-center rounded-full font-extrabold text-sm ${colors[rank] || 'bg-orange-100 dark:bg-orange-950/50 text-orange-700 dark:text-orange-300'}`}>
-      {rank}
-    </span>
-  );
-};
-
-// ─── Stars Display ─────────────────────────────────────────────────────────────
-const Stars = ({ count, max = 5 }) => (
-  <div className="flex gap-0.5">
-    {Array.from({ length: max }).map((_, i) => (
-      <svg key={i} className={`w-4 h-4 ${i < count ? 'text-yellow-400' : 'text-gray-200 dark:text-gray-700'}`} fill="currentColor" viewBox="0 0 20 20">
-        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-      </svg>
-    ))}
+// ─── Chart Card Wrapper ────────────────────────────────────────────────────────
+const ChartCard = ({ children, className = '' }) => (
+  <div className={`bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-orange-100 dark:border-orange-900/50 p-5 ${className}`}>
+    {children}
   </div>
 );
-
-// ─── Health Score Badge ────────────────────────────────────────────────────────
-const HealthBadge = ({ status }) => {
-  const map = {
-    'Excellent': 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400',
-    'Good': 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400',
-    'Average': 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-400',
-    'Low Activity': 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400',
-  };
-  return (
-    <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${map[status] || ''}`}>{status}</span>
-  );
-};
-
-// ─── Activity Feed Icon ────────────────────────────────────────────────────────
-const ActivityIcon = ({ type, iconType }) => {
-  const config = {
-    success: { bg: 'bg-green-100 dark:bg-green-950/40', color: 'text-green-600 dark:text-green-400' },
-    info: { bg: 'bg-blue-100 dark:bg-blue-950/40', color: 'text-blue-600 dark:text-blue-400' },
-    warning: { bg: 'bg-yellow-100 dark:bg-yellow-950/40', color: 'text-yellow-600 dark:text-yellow-400' },
-  };
-  const iconMap = {
-    upload: FileText, approve: CheckCircle, college: Building2,
-    hod: UserCheck, reject: XCircle, student: GraduationCap,
-  };
-  const Icon = iconMap[iconType] || Activity;
-  const c = config[type] || config.info;
-  return (
-    <div className={`p-2 rounded-xl shrink-0 ${c.bg}`}>
-      <Icon className={`w-4 h-4 ${c.color}`} />
-    </div>
-  );
-};
 
 // ─── Modal ─────────────────────────────────────────────────────────────────────
 const Modal = ({ isOpen, onClose, title, children }) => {
@@ -186,26 +108,55 @@ const Modal = ({ isOpen, onClose, title, children }) => {
   );
 };
 
-// ─── Chart Card Wrapper ────────────────────────────────────────────────────────
-const ChartCard = ({ children, className = '' }) => (
-  <div className={`bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-orange-100 dark:border-orange-900/50 p-5 ${className}`}>
-    {children}
+// ─── Empty Chart Placeholder ──────────────────────────────────────────────────
+const EmptyChart = ({ message = 'No data yet — connect to backend' }) => (
+  <div className="h-full flex flex-col items-center justify-center text-gray-400 dark:text-gray-600 gap-2 py-8">
+    <BarChart2 className="w-10 h-10 opacity-30" />
+    <p className="text-xs text-center">{message}</p>
   </div>
 );
 
-// ─── Main Dashboard Component ──────────────────────────────────────────────────
+// ─── Main Dashboard ────────────────────────────────────────────────────────────
 export const SystemAdminAnalyticsDashboard = () => {
-  const [activeModal, setActiveModal] = useState(null); // 'active' | 'inactive'
-  const [lastUpdated, setLastUpdated] = useState(() => new Date().toLocaleTimeString());
-  const [refreshing, setRefreshing] = useState(false);
+  const [activeModal, setActiveModal]   = useState(null);
+  const [lastUpdated, setLastUpdated]   = useState(() => new Date().toLocaleTimeString());
+  const [refreshing, setRefreshing]     = useState(false);
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [stats, setStats]               = useState(null);
+  const [statsError, setStatsError]     = useState(null);
 
-  const handleRefresh = useCallback(() => {
-    setRefreshing(true);
-    setTimeout(() => {
-      setLastUpdated(new Date().toLocaleTimeString());
-      setRefreshing(false);
-    }, 800);
+  const fetchStats = useCallback(async () => {
+    setStatsLoading(true);
+    setStatsError(null);
+    try {
+      const data = await systemAdminApi.getStats();
+      setStats(data);
+    } catch (err) {
+      setStatsError(err.message || 'Failed to load stats');
+      // Keep showing 0s gracefully
+    } finally {
+      setStatsLoading(false);
+    }
   }, []);
+
+  useEffect(() => { fetchStats(); }, [fetchStats]);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchStats();
+    setLastUpdated(new Date().toLocaleTimeString());
+    setRefreshing(false);
+  }, [fetchStats]);
+
+  // KPI values wired to real stats
+  const kpi = {
+    totalColleges:    stats?.totalColleges    ?? 0,
+    activeColleges:   stats?.activeColleges   ?? 0,
+    inactiveColleges: stats?.inactiveColleges ?? 0,
+    suspendedColleges:stats?.suspendedColleges?? 0,
+    totalUsers:       stats?.totalUsers       ?? 0,
+    totalCollegeAdmins: stats?.totalCollegeAdmins ?? 0,
+  };
 
   return (
     <div className="animate-fade-in space-y-8 pb-10">
@@ -221,6 +172,11 @@ export const SystemAdminAnalyticsDashboard = () => {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          {statsError && (
+            <span className="text-xs text-red-500 dark:text-red-400 flex items-center gap-1">
+              <AlertCircle className="w-3 h-3" /> {statsError}
+            </span>
+          )}
           <span className="text-xs text-gray-400 dark:text-gray-500">
             Last updated: <span className="font-semibold text-gray-600 dark:text-gray-300">{lastUpdated}</span>
           </span>
@@ -236,322 +192,114 @@ export const SystemAdminAnalyticsDashboard = () => {
         </div>
       </div>
 
-      {/* ── KPI Cards ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+      {/* ── KPI Row 1 ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4">
         <KpiCard
           icon={Building2} label="Total Colleges"
-          value={KPI_DATA.totalColleges.value}
-          trend={KPI_DATA.totalColleges.trend} up={KPI_DATA.totalColleges.up}
+          value={kpi.totalColleges} trend="—" up={true} loading={statsLoading}
           gradient="linear-gradient(135deg, #ea580c 0%, #f97316 100%)"
         />
         <KpiCard
           icon={CheckCircle} label="Active Colleges"
-          value={KPI_DATA.activeColleges.value}
-          trend={KPI_DATA.activeColleges.trend} up={KPI_DATA.activeColleges.up}
+          value={kpi.activeColleges} trend="—" up={true} loading={statsLoading}
           gradient="linear-gradient(135deg, #16a34a 0%, #22c55e 100%)"
           onClick={() => setActiveModal('active')}
         />
         <KpiCard
-          icon={XCircle} label="Inactive Colleges"
-          value={KPI_DATA.inactiveColleges.value}
-          trend={KPI_DATA.inactiveColleges.trend} up={KPI_DATA.inactiveColleges.up}
+          icon={XCircle} label="Inactive / Suspended"
+          value={kpi.inactiveColleges + kpi.suspendedColleges} trend="—" up={false} loading={statsLoading}
           gradient="linear-gradient(135deg, #dc2626 0%, #ef4444 100%)"
           onClick={() => setActiveModal('inactive')}
         />
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
         <KpiCard
           icon={Users} label="Total Users"
-          value={KPI_DATA.totalUsers.value}
-          trend={KPI_DATA.totalUsers.trend} up={KPI_DATA.totalUsers.up}
+          value={kpi.totalUsers} trend="—" up={true} loading={statsLoading}
           gradient="linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)"
         />
         <KpiCard
-          icon={BookOpen} label="Total Departments"
-          value={KPI_DATA.totalDepartments.value}
-          trend={KPI_DATA.totalDepartments.trend} up={KPI_DATA.totalDepartments.up}
+          icon={UserCheck} label="College Admins"
+          value={kpi.totalCollegeAdmins} trend="—" up={true} loading={statsLoading}
           gradient="linear-gradient(135deg, #0891b2 0%, #06b6d4 100%)"
         />
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-        <KpiCard
-          icon={UserCheck} label="Total HODs"
-          value={KPI_DATA.totalHODs.value}
-          trend={KPI_DATA.totalHODs.trend} up={KPI_DATA.totalHODs.up}
-          gradient="linear-gradient(135deg, #0d9488 0%, #14b8a6 100%)"
-        />
-        <KpiCard
-          icon={Target} label="Total Mentors"
-          value={KPI_DATA.totalMentors.value}
-          trend={KPI_DATA.totalMentors.trend} up={KPI_DATA.totalMentors.up}
-          gradient="linear-gradient(135deg, #c2410c 0%, #ea580c 100%)"
-        />
-        <KpiCard
-          icon={GraduationCap} label="Total Students"
-          value={KPI_DATA.totalStudents.value}
-          trend={KPI_DATA.totalStudents.trend} up={KPI_DATA.totalStudents.up}
-          gradient="linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%)"
-        />
-        <KpiCard
-          icon={FileText} label="Total Submissions"
-          value={KPI_DATA.totalSubmissions.value}
-          trend={KPI_DATA.totalSubmissions.trend} up={KPI_DATA.totalSubmissions.up}
-          gradient="linear-gradient(135deg, #9d174d 0%, #ec4899 100%)"
-        />
-        <KpiCard
-          icon={Award} label="Credits Awarded"
-          value={KPI_DATA.totalCredits.value}
-          trend={KPI_DATA.totalCredits.trend} up={KPI_DATA.totalCredits.up}
-          gradient="linear-gradient(135deg, #92400e 0%, #f59e0b 100%)"
-        />
-      </div>
 
-      {/* ── Pending Actions ── */}
-      <ChartCard>
-        <SectionHeader icon={AlertCircle} title="Pending Actions" subtitle="Items requiring system admin attention" />
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {PENDING_ACTIONS.map((item) => (
-            <div
-              key={item.label}
-              className="relative overflow-hidden rounded-xl p-4 border-2 hover:scale-[1.02] transition-transform cursor-pointer"
-              style={{ borderColor: `${item.color}30`, background: `${item.color}08` }}
-            >
-              <div className="w-10 h-10 rounded-xl mb-3 flex items-center justify-center" style={{ background: `${item.color}20` }}>
-                <Zap className="w-5 h-5" style={{ color: item.color }} />
-              </div>
-              <p className="text-2xl font-extrabold" style={{ color: item.color }}>{item.value}</p>
-              <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 mt-1">{item.label}</p>
-            </div>
-          ))}
-        </div>
-      </ChartCard>
-
-      {/* ── Charts Row 1: Growth + Submissions ── */}
+      {/* ── Charts: Growth + Submissions ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ChartCard>
           <SectionHeader icon={TrendingUp} title="Monthly Platform Growth" subtitle="Colleges, Users & Submissions (Jan–Dec)" />
-          <ResponsiveContainer width="100%" height={260}>
-            <LineChart data={MONTHLY_GROWTH} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-              <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11 }} />
-              <Tooltip content={<CustomTooltip />} />
-              <Legend />
-              <Line type="monotone" dataKey="colleges" stroke="#ea580c" strokeWidth={2.5} dot={{ r: 3 }} name="Colleges" />
-              <Line type="monotone" dataKey="users" stroke="#3b82f6" strokeWidth={2.5} dot={{ r: 3 }} name="Users" />
-              <Line type="monotone" dataKey="submissions" stroke="#10b981" strokeWidth={2.5} dot={{ r: 3 }} name="Submissions" />
-            </LineChart>
-          </ResponsiveContainer>
+          <div className="h-[260px] flex items-center justify-center">
+            <EmptyChart message="Connect backend analytics to populate growth chart" />
+          </div>
         </ChartCard>
 
         <ChartCard>
           <SectionHeader icon={FileText} title="Submission Analytics" subtitle="Approved vs Rejected (Monthly)" />
-          <ResponsiveContainer width="100%" height={260}>
-            <AreaChart data={SUBMISSION_ANALYTICS} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
-              <defs>
-                <linearGradient id="approvedGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#10b981" stopOpacity={0.02} />
-                </linearGradient>
-                <linearGradient id="rejectedGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#ef4444" stopOpacity={0.02} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-              <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11 }} />
-              <Tooltip content={<CustomTooltip />} />
-              <Legend />
-              <Area type="monotone" dataKey="approved" stroke="#10b981" strokeWidth={2.5} fill="url(#approvedGrad)" name="Approved" />
-              <Area type="monotone" dataKey="rejected" stroke="#ef4444" strokeWidth={2.5} fill="url(#rejectedGrad)" name="Rejected" />
-            </AreaChart>
-          </ResponsiveContainer>
+          <div className="h-[260px] flex items-center justify-center">
+            <EmptyChart message="Connect backend analytics to populate submission chart" />
+          </div>
         </ChartCard>
       </div>
 
-      {/* ── Charts Row 2: Pie Charts ── */}
+      {/* ── Pie Charts ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ChartCard>
           <SectionHeader icon={Globe} title="College Activity Distribution" subtitle="Activity contribution by top colleges" />
-          <div className="flex flex-col sm:flex-row items-center gap-6">
-            <ResponsiveContainer width={200} height={220}>
-              <PieChart>
-                <Pie data={COLLEGE_ACTIVITY_PIE} cx="50%" cy="50%" innerRadius={55} outerRadius={90} paddingAngle={3} dataKey="value">
-                  {COLLEGE_ACTIVITY_PIE.map((entry, i) => (
-                    <Cell key={i} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(v) => `${v}%`} />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="flex flex-col gap-3 flex-1">
-              {COLLEGE_ACTIVITY_PIE.map((item) => (
-                <div key={item.name} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full shrink-0" style={{ background: item.color }} />
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{item.name}</span>
-                  </div>
-                  <span className="font-bold text-sm" style={{ color: item.color }}>{item.value}%</span>
-                </div>
-              ))}
-            </div>
+          <div className="h-[220px] flex items-center justify-center">
+            <EmptyChart message="Aggregated college analytics — connect backend" />
           </div>
         </ChartCard>
 
         <ChartCard>
           <SectionHeader icon={Users} title="User Role Distribution" subtitle="Breakdown by user roles across all colleges" />
-          <div className="flex flex-col sm:flex-row items-center gap-6">
-            <ResponsiveContainer width={200} height={220}>
-              <PieChart>
-                <Pie data={USER_ROLE_PIE} cx="50%" cy="50%" innerRadius={55} outerRadius={90} paddingAngle={3} dataKey="value">
-                  {USER_ROLE_PIE.map((entry, i) => (
-                    <Cell key={i} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(v) => v.toLocaleString()} />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="flex flex-col gap-3 flex-1">
-              {USER_ROLE_PIE.map((item) => (
-                <div key={item.name} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full shrink-0" style={{ background: item.color }} />
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{item.name}</span>
+          {statsLoading ? (
+            <div className="h-[220px] flex items-center justify-center">
+              <RefreshCw className="w-8 h-8 text-orange-400 animate-spin" />
+            </div>
+          ) : (
+            <div className="flex flex-col sm:flex-row items-center gap-6 h-[220px]">
+              <ResponsiveContainer width={200} height={220}>
+                <PieChart>
+                  <Pie
+                    data={[
+                      { name: 'Total Users', value: kpi.totalUsers || 1, color: '#7c3aed' },
+                      { name: 'College Admins', value: kpi.totalCollegeAdmins || 0, color: '#0891b2' },
+                    ]}
+                    cx="50%" cy="50%" innerRadius={55} outerRadius={90} paddingAngle={3} dataKey="value"
+                  >
+                    {[{ color: '#7c3aed' }, { color: '#0891b2' }].map((entry, i) => (
+                      <Cell key={i} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(v) => v.toLocaleString()} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="flex flex-col gap-3 flex-1">
+                {[
+                  { name: 'Total Users', value: kpi.totalUsers, color: '#7c3aed' },
+                  { name: 'College Admins', value: kpi.totalCollegeAdmins, color: '#0891b2' },
+                ].map(item => (
+                  <div key={item.name} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="w-3 h-3 rounded-full shrink-0" style={{ background: item.color }} />
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{item.name}</span>
+                    </div>
+                    <span className="font-bold text-sm" style={{ color: item.color }}>{item.value?.toLocaleString() ?? 0}</span>
                   </div>
-                  <span className="font-bold text-sm" style={{ color: item.color }}>{item.value.toLocaleString()}</span>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </ChartCard>
       </div>
 
-      {/* ── College Performance Bar Chart ── */}
+      {/* ── College Performance Bar Chart placeholder ── */}
       <ChartCard>
-        <SectionHeader icon={BarChart2} title="College Performance Comparison" subtitle="Top 8 colleges – Credits (K), Submissions (tens), Students (tens)" />
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={COLLEGE_BAR_DATA} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-            <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-            <YAxis tick={{ fontSize: 11 }} />
-            <Tooltip content={<CustomTooltip />} />
-            <Legend />
-            <Bar dataKey="credits" fill="#ea580c" radius={[4, 4, 0, 0]} name="Credits (K)" />
-            <Bar dataKey="submissions" fill="#3b82f6" radius={[4, 4, 0, 0]} name="Submissions (×10)" />
-            <Bar dataKey="students" fill="#10b981" radius={[4, 4, 0, 0]} name="Students (×10)" />
-          </BarChart>
-        </ResponsiveContainer>
-      </ChartCard>
-
-      {/* ── Leaderboards Row ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-        {/* Top Colleges */}
-        <ChartCard className="lg:col-span-1">
-          <SectionHeader icon={Crown} title="Top Colleges" subtitle="By credits & approved submissions" />
-          <div className="space-y-2">
-            {TOP_COLLEGES.map((col) => (
-              <div key={col.rank} className="flex items-center gap-3 p-3 rounded-xl hover:bg-orange-50 dark:hover:bg-orange-950/20 transition-colors">
-                <RankBadge rank={col.rank} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">{col.name}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">{col.approved.toLocaleString()} approved</p>
-                </div>
-                <span className="text-xs font-bold text-orange-600 dark:text-orange-400 shrink-0">
-                  {(col.credits / 1000).toFixed(0)}K cr
-                </span>
-              </div>
-            ))}
-          </div>
-        </ChartCard>
-
-        {/* Top Students */}
-        <ChartCard className="lg:col-span-1">
-          <SectionHeader icon={Medal} title="Top Students" subtitle="Highest credits across platform" />
-          <div className="space-y-2">
-            {TOP_STUDENTS.map((stu) => (
-              <div key={stu.rank} className="flex items-center gap-3 p-3 rounded-xl hover:bg-orange-50 dark:hover:bg-orange-950/20 transition-colors">
-                <RankBadge rank={stu.rank} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">{stu.name}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{stu.college}</p>
-                </div>
-                <div className="flex flex-col items-end gap-1 shrink-0">
-                  <span className="text-xs font-bold text-orange-600 dark:text-orange-400">{stu.credits.toLocaleString()}</span>
-                  <Stars count={stu.stars} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </ChartCard>
-
-        {/* Top Mentors */}
-        <ChartCard className="lg:col-span-1">
-          <SectionHeader icon={Shield} title="Top Mentors" subtitle="By reviews completed" />
-          <div className="space-y-2">
-            {TOP_MENTORS.map((mentor) => (
-              <div key={mentor.rank} className="flex items-center gap-3 p-3 rounded-xl hover:bg-orange-50 dark:hover:bg-orange-950/20 transition-colors">
-                <RankBadge rank={mentor.rank} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">{mentor.name}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">{mentor.department} · {mentor.reviews} reviews</p>
-                </div>
-                <span className="text-xs font-bold text-orange-600 dark:text-orange-400 shrink-0">
-                  {(mentor.credits / 1000).toFixed(0)}K cr
-                </span>
-              </div>
-            ))}
-          </div>
-        </ChartCard>
-      </div>
-
-      {/* ── College Health Scores ── */}
-      <ChartCard>
-        <SectionHeader icon={Activity} title="College Health Scores" subtitle="Composite score based on activity, participation, submissions & credits" />
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {COLLEGE_HEALTH.map((col) => (
-            <div key={col.name} className="p-4 rounded-xl border border-orange-100 dark:border-orange-900/40 hover:shadow-md transition-all">
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex-1 min-w-0 pr-2">
-                  <p className="font-semibold text-sm text-gray-800 dark:text-gray-100 truncate">{col.name}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">{col.participation} participation</p>
-                </div>
-                <HealthBadge status={col.status} />
-              </div>
-              {/* Score Bar */}
-              <div className="flex items-center gap-2">
-                <div className="flex-1 h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all duration-700"
-                    style={{
-                      width: `${col.score}%`,
-                      background: col.score >= 80 ? '#22c55e' : col.score >= 60 ? '#3b82f6' : col.score >= 40 ? '#f59e0b' : '#ef4444',
-                    }}
-                  />
-                </div>
-                <span className="text-sm font-extrabold text-gray-700 dark:text-gray-300 w-8 text-right">{col.score}</span>
-              </div>
-              <div className="flex gap-4 mt-3 text-xs text-gray-500 dark:text-gray-400">
-                <span>{col.submissions.toLocaleString()} sub.</span>
-                <span>{(col.credits / 1000).toFixed(0)}K cr</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </ChartCard>
-
-      {/* ── Activity Feed ── */}
-      <ChartCard>
-        <SectionHeader icon={Activity} title="Recent Activity Feed" subtitle="Live platform activity stream" />
-        <div className="space-y-3">
-          {RECENT_ACTIVITY.map((item) => (
-            <div key={item.id} className="flex items-start gap-3 p-3 rounded-xl hover:bg-orange-50 dark:hover:bg-orange-950/20 transition-colors">
-              <ActivityIcon type={item.type} iconType={item.icon} />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm text-gray-700 dark:text-gray-300">{item.text}</p>
-              </div>
-              <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0 whitespace-nowrap">{item.time}</span>
-            </div>
-          ))}
+        <SectionHeader icon={BarChart2} title="College Performance Comparison" subtitle="Top colleges — Credits, Submissions, Students" />
+        <div className="h-[300px] flex items-center justify-center">
+          <EmptyChart message="Connect college analytics endpoint to show performance chart" />
         </div>
       </ChartCard>
 
@@ -559,64 +307,22 @@ export const SystemAdminAnalyticsDashboard = () => {
       <Modal
         isOpen={activeModal === 'active'}
         onClose={() => setActiveModal(null)}
-        title={`Active Colleges (${ACTIVE_COLLEGES.length})`}
+        title={`Active Colleges (${kpi.activeColleges})`}
       >
-        <div className="space-y-3">
-          {ACTIVE_COLLEGES.map((col) => (
-            <div key={col.name} className="p-4 rounded-xl border border-orange-100 dark:border-orange-900/40 bg-orange-50/50 dark:bg-orange-950/10">
-              <div className="flex items-start justify-between mb-2">
-                <p className="font-bold text-gray-900 dark:text-white">{col.name}</p>
-                <span className="text-xs bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400 px-2.5 py-0.5 rounded-full font-semibold">Active</span>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
-                {[
-                  { label: 'Total Users', value: col.users.toLocaleString() },
-                  { label: 'Departments', value: col.departments },
-                  { label: 'Total Credits', value: `${(col.credits / 1000).toFixed(0)}K` },
-                  { label: 'Last Activity', value: col.lastActivity },
-                ].map(item => (
-                  <div key={item.label} className="bg-white dark:bg-gray-800 rounded-lg p-2.5 text-center">
-                    <p className="text-base font-extrabold text-orange-600 dark:text-orange-400">{item.value}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{item.label}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
+        <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-6">
+          Navigate to <strong>Colleges</strong> in the sidebar to manage and view active college details.
+        </p>
       </Modal>
 
       {/* ── Inactive Colleges Modal ── */}
       <Modal
         isOpen={activeModal === 'inactive'}
         onClose={() => setActiveModal(null)}
-        title={`Inactive Colleges (${INACTIVE_COLLEGES.length})`}
+        title={`Inactive / Suspended Colleges (${kpi.inactiveColleges + kpi.suspendedColleges})`}
       >
-        <div className="space-y-3">
-          {INACTIVE_COLLEGES.map((col) => (
-            <div key={col.name} className="p-4 rounded-xl border border-red-100 dark:border-red-900/40 bg-red-50/50 dark:bg-red-950/10">
-              <div className="flex items-start justify-between mb-2">
-                <p className="font-bold text-gray-900 dark:text-white">{col.name}</p>
-                <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold ${col.status === 'Suspended' ? 'bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400' : 'bg-yellow-100 dark:bg-yellow-950/40 text-yellow-700 dark:text-yellow-400'}`}>
-                  {col.status}
-                </span>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
-                {[
-                  { label: 'Total Users', value: col.users },
-                  { label: 'Last Login', value: col.lastLogin },
-                  { label: 'Last Submission', value: col.lastSubmission },
-                  { label: 'Status', value: col.status },
-                ].map(item => (
-                  <div key={item.label} className="bg-white dark:bg-gray-800 rounded-lg p-2.5 text-center">
-                    <p className="text-sm font-extrabold text-red-600 dark:text-red-400">{item.value}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{item.label}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
+        <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-6">
+          Navigate to <strong>Colleges</strong> in the sidebar and filter by <em>Inactive</em> or <em>Suspended</em> to manage them.
+        </p>
       </Modal>
 
     </div>

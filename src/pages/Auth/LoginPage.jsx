@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { GraduationCap, Eye, EyeOff, Shield, KeyRound, Mail, ArrowLeft, CheckCircle, ChevronDown, PlusCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { adminLogin, login as loginUser, getUsers, getDepartmentsByCollege, addDepartmentToCollege, getColleges } from '../../utils/localStorage';
+import { login as loginUser, getUsers, getDepartmentsByCollege, addDepartmentToCollege, getColleges } from '../../utils/localStorage';
 import { useToast } from '../../components/ui/UIComponents';
 import { ROLES } from '../../utils/mockData';
+import { authApi } from '../../utils/api';
 
 // ---- System / Admin Login ----
 export const AdminLoginPage = () => {
@@ -15,22 +16,26 @@ export const AdminLoginPage = () => {
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => {
-      const res = adminLogin(form.email, form.password, form.adminId);
-      if (res.success) {
-        login(res.user);
-        const role = res.user.role;
-        if (role === ROLES.SYSTEM_ADMIN) navigate('/dashboard/system-admin');
-        else if (role === ROLES.COLLEGE_ADMIN) navigate('/dashboard/college-admin');
-        else showToast('Not an admin account.', 'error');
-      } else {
-        showToast('Invalid credentials. Try: admin@spark.edu / admin123 / SA001', 'error');
+    try {
+      // Try SYSTEM_ADMIN first, then COLLEGE_ADMIN
+      let data = null;
+      try {
+        data = await authApi.login(form.email, form.password, ROLES.SYSTEM_ADMIN);
+      } catch {
+        data = await authApi.login(form.email, form.password, ROLES.COLLEGE_ADMIN);
       }
+      login(data);
+      if (data.role === ROLES.SYSTEM_ADMIN)      navigate('/dashboard/system-admin');
+      else if (data.role === ROLES.COLLEGE_ADMIN) navigate('/dashboard/college-admin');
+      else showToast('Not an admin account.', 'error');
+    } catch (err) {
+      showToast(err.message || 'Invalid credentials.', 'error');
+    } finally {
       setLoading(false);
-    }, 800);
+    }
   };
 
   return (
@@ -42,7 +47,7 @@ export const AdminLoginPage = () => {
             <Shield className="w-8 h-8 text-white" />
           </div>
           <h1 className="font-display text-2xl font-bold text-slate-900 dark:text-white">Admin Login</h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">System & College Administrator Access</p>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">System &amp; College Administrator Access</p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

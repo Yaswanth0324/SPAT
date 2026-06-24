@@ -55,4 +55,9 @@ public interface AuthService {
      * For stateless JWT, this may simply return success (client clears token).
      */
     void logout(String token);
+
+    /**
+     * Directly verify the user's email address by setting emailVerified and active to true.
+     */
+    void verifyEmailDirect(String email);
 }

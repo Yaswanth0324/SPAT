@@ -19,12 +19,12 @@
     </parent>
 
     <groupId>com.sapt</groupId>
-    <artifactId>sapt-backend</artifactId>
+    <artifactId>spat-backend</artifactId>
     <version>1.0.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
-    <name>SAPT Backend</name>
-    <description>Student Activity Point Tracker - Backend Service</description>
+    <name>SPAT Backend</name>
+    <description>SPARK - Student Performance and Activity Tracker - Backend Service</description>
 
     <!-- ================================================================
          PROPERTIES

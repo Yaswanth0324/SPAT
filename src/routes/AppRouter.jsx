@@ -9,7 +9,7 @@ import RegisterPage from '../pages/Auth/RegisterPage';
 
 // Dashboards
 import { RoleDashboardLayout } from '../pages/Dashboards/DashboardLayoutWrapper';
-import { SystemAdminColleges, SystemAdminAddAdmin } from '../pages/Dashboards/SystemAdmin/SystemAdminPages';
+import { SystemAdminColleges, SystemAdminAddAdmin, SystemAdminProfile, SystemAdminCollegeAdmins } from '../pages/Dashboards/SystemAdmin/SystemAdminPages';
 import { SystemAdminAnalyticsDashboard } from '../pages/Dashboards/SystemAdmin/SystemAdminDashboard';
 import { CollegeAdminDepartments, CollegeAdminHODRequests } from '../pages/Dashboards/CollegeAdmin/CollegeAdminPages';
 import { CollegeAdminDashboard } from '../pages/Dashboards/CollegeAdmin/CollegeAdminDashboard';
@@ -36,8 +36,10 @@ const AppRouter = () => (
         <ProtectedRoute allowedRoles={[ROLES.SYSTEM_ADMIN]}><RoleDashboardLayout /></ProtectedRoute>
       }>
         <Route index element={<SystemAdminAnalyticsDashboard />} />
-        <Route path="colleges" element={<SystemAdminColleges />} />
-        <Route path="add-admin" element={<SystemAdminAddAdmin />} />
+        <Route path="colleges"       element={<SystemAdminColleges />} />
+        <Route path="add-admin"      element={<SystemAdminAddAdmin />} />
+        <Route path="college-admins" element={<SystemAdminCollegeAdmins />} />
+        <Route path="profile"        element={<SystemAdminProfile />} />
       </Route>
 
       {/* College Admin */}

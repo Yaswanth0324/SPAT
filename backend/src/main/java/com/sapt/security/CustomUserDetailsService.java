@@ -1,52 +1,46 @@
 package com.sapt.security;
 
+import com.sapt.auth.entity.User;
+import com.sapt.auth.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 /**
- * ============================================================
- * CustomUserDetailsService
- * ============================================================
- * Loads user-specific data for Spring Security authentication.
- * This is the bridge between your User entity (DB) and Spring Security.
+ * CustomUserDetailsService - Spring Security UserDetailsService implementation.
  *
- * TODO (Auth Team):
- *  - Inject your User repository
- *  - Query the user by email (or username) from the database
- *  - Return a UserDetails object (can use Spring's User.builder())
- *  - Include roles/authorities for role-based access control
- *  - Throw UsernameNotFoundException if user not found
- * ============================================================
+ * IMPORTANT: In SAPT the JWT subject is the user.id (UUID string).
+ * So loadUserByUsername receives the UUID id as a string.
  */
 @Service
+@RequiredArgsConstructor
 public class CustomUserDetailsService implements UserDetailsService {
 
-    // TODO: Inject user repository
-    // private final AuthUserRepository authUserRepository;
+    private final UserRepository userRepository;
 
     /**
-     * Load user by username (email in SAPT context).
+     * Load user by user.id (UUID string stored as subject in JWT).
      *
-     * TODO: Implement this method:
-     *  1. Query user by email from repository
-     *  2. If not found, throw new UsernameNotFoundException("User not found: " + username)
-     *  3. Return UserDetails with username, password, and roles
+     * @param username The user.id UUID string (from JWT subject)
      */
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        // TODO: Implement user lookup from database
-        //
-        // AuthUser user = authUserRepository.findByEmail(username)
-        //     .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
-        //
-        // return org.springframework.security.core.userdetails.User.builder()
-        //     .username(user.getEmail())
-        //     .password(user.getPassword())
-        //     .roles(user.getRole().name())
-        //     .build();
+        User user = userRepository.findById(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with id: " + username));
 
-        throw new UsernameNotFoundException("CustomUserDetailsService not yet implemented");
+        if (!user.isActive()) {
+            throw new UsernameNotFoundException("User account is deactivated: " + username);
+        }
+
+        return org.springframework.security.core.userdetails.User.builder()
+                .username(user.getId())                  // subject = UUID id
+                .password(user.getPasswordHash())
+                .authorities(List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name())))
+                .build();
     }
 }

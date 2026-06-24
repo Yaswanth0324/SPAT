@@ -7,9 +7,11 @@ import { ROLES } from '../../utils/mockData';
 
 const roleLinks = {
   [ROLES.SYSTEM_ADMIN]: [
-    { to: '/dashboard/system-admin', end: true, icon: <LayoutDashboard className="w-5 h-5" />, label: 'Dashboard' },
-    { to: '/dashboard/system-admin/colleges', icon: <Building2 className="w-5 h-5" />, label: 'Colleges' },
-    { to: '/dashboard/system-admin/add-admin', icon: <UserPlus className="w-5 h-5" />, label: 'Add College Admin' },
+    { to: '/dashboard/system-admin',                   end: true, icon: <LayoutDashboard className="w-5 h-5" />, label: 'Dashboard' },
+    { to: '/dashboard/system-admin/colleges',                     icon: <Building2 className="w-5 h-5" />,      label: 'Colleges' },
+    { to: '/dashboard/system-admin/add-admin',                    icon: <UserPlus className="w-5 h-5" />,       label: 'Add College Admin' },
+    { to: '/dashboard/system-admin/college-admins',               icon: <Users className="w-5 h-5" />,          label: 'College Admins' },
+    { to: '/dashboard/system-admin/profile',                      icon: <User className="w-5 h-5" />,           label: 'Profile' },
   ],
   [ROLES.COLLEGE_ADMIN]: [
     { to: '/dashboard/college-admin', end: true, icon: <LayoutDashboard className="w-5 h-5" />, label: 'Dashboard' },
