@@ -62,5 +62,13 @@ public interface SubmissionRepository extends JpaRepository<Submission, String> 
            "WHERE s.mentorId = :mentorId AND s.status = 'APPROVED'")
     Integer sumAwardedCreditsByMentorId(@Param("mentorId") String mentorId);
 
+    // ─── College Admin Queries ────────────────────────────────
+    /**
+     * All submissions for a batch of students (used by CollegeAdminServiceImpl
+     * to pull all college-scoped submissions in one query).
+     * Returns an empty list if studentIds is empty — callers must guard against that.
+     */
+    List<Submission> findByStudentIdIn(List<String> studentIds);
+
     // ─── TODO: Add more aggregation / filter queries as needed ─
 }

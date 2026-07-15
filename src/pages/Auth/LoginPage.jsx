@@ -38,12 +38,12 @@ export const AdminLoginPage = () => {
         }
       }
 
-      // Verify adminId matches
-      if (res.user.adminId && form.adminId.trim().toUpperCase() !== res.user.adminId.toUpperCase()) {
+      // Verify adminId matches (if the user has one set)
+      if (res.adminId && form.adminId.trim().toUpperCase() !== res.adminId.toUpperCase()) {
         throw new Error('Admin ID does not match');
       }
 
-      login(res.user);
+      login(res);
       if (role === 'SYSTEM_ADMIN') navigate('/dashboard/system-admin');
       else if (role === 'COLLEGE_ADMIN') navigate('/dashboard/college-admin');
     } catch (err) {
@@ -299,19 +299,20 @@ const LoginPage = () => {
     setLoading(true);
     try {
       const res = await apiLogin(form.email, form.password, form.role);
-      const userRole = res.user.role;
+      const userRole = res.role;
 
       // Block pending / rejected accounts
-      if (res.user.status === 'pending') {
+      const statusLower = res.status ? res.status.toLowerCase() : '';
+      if (statusLower === 'pending') {
         showToast('Your account is pending approval. Please wait.', 'warning', 6000);
         return;
       }
-      if (res.user.status === 'rejected') {
+      if (statusLower === 'rejected') {
         showToast('Your registration was rejected. Please contact your mentor.', 'error', 6000);
         return;
       }
 
-      login(res.user);
+      login(res);
       if (userRole === ROLES.HOD) navigate('/dashboard/hod');
       else if (userRole === ROLES.MENTOR) navigate('/dashboard/mentor');
       else if (userRole === ROLES.STUDENT) navigate('/dashboard/student');

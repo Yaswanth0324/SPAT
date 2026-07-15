@@ -67,6 +67,58 @@ const api = {
   delete: (endpoint, options = {})       => request(endpoint, { method: 'DELETE', ...options }),
 };
 
+// ── College Admin API ─────────────────────────────────────────────────────────
+export const collegeAdminApi = {
+  /** GET /college-admin/profile — own profile */
+  getProfile: () =>
+    api.get('/college-admin/profile'),
+
+  /** PUT /college-admin/profile — update name, phone, position, avatar */
+  updateProfile: (data) =>
+    api.put('/college-admin/profile', data),
+
+  /** PUT /college-admin/college — update college address and official email */
+  updateCollegeDetails: (data) =>
+    api.put('/college-admin/college', data),
+
+  /** GET /college-admin/dashboard — full college-wide analytics stats */
+  getDashboardStats: () =>
+    api.get('/college-admin/dashboard'),
+
+  /** GET /college-admin/departments — list departments with HOD/mentor/student counts */
+  getDepartments: () =>
+    api.get('/college-admin/departments'),
+
+  /** GET /college-admin/users?role=HOD|MENTOR|STUDENT */
+  getUsersByRole: (role) =>
+    api.get(`/college-admin/users?role=${role}`),
+};
+
+// ── Shared Auth-scoped API helpers (used across multiple role pages) ───────────
+/**
+ * GET /auth/users?collegeName=X&role=HOD|MENTOR|STUDENT
+ * Returns all users in a college filtered by role.
+ * Used by: CollegeAdminPages, HODPages, MentorPages
+ */
+export const apiGetUsersByCollege = (collegeName, role) =>
+  api.get(`/auth/users?collegeName=${encodeURIComponent(collegeName)}&role=${role}`);
+
+/**
+ * POST /auth/users/:userId/status?status=APPROVED|REJECTED|PENDING
+ * Approves or rejects a user registration.
+ * Used by: CollegeAdminPages (HOD approval), HODPages (Mentor approval), MentorPages (Student approval)
+ */
+export const apiUpdateUserStatus = (userId, status) =>
+  api.post(`/auth/users/${userId}/status?status=${status}`);
+
+/**
+ * GET /auth/users/mentor/:mentorId
+ * Returns all students assigned to a specific mentor.
+ * Used by: MentorPages
+ */
+export const apiGetUsersByMentor = (mentorId) =>
+  api.get(`/auth/users/mentor/${mentorId}`);
+
 // ── System Admin API ──────────────────────────────────────────────────────────
 export const systemAdminApi = {
   /** GET /system-admin/profile — own profile */
@@ -103,18 +155,34 @@ export const systemAdminApi = {
 };
 
 // ── Auth API ──────────────────────────────────────────────────────────────────
+export const apiLogin = (email, password, role) =>
+  api.post('/auth/login', { email, password, role });
+
+export const apiRegister = (data) =>
+  api.post('/auth/register', data);
+
+export const apiGetColleges = () =>
+  api.get('/auth/colleges');
+
+export const apiGetDepartments = (collegeName) =>
+  api.get(`/auth/colleges/departments?collegeName=${encodeURIComponent(collegeName)}`);
+
+export const apiGetMentors = (collegeName, departmentName) =>
+  api.get(`/auth/mentors?collegeName=${encodeURIComponent(collegeName)}&departmentName=${encodeURIComponent(departmentName)}`);
+
+export const apiSendOtp = (email, purpose) =>
+  api.post('/auth/otp/send', { email, purpose });
+
+export const apiVerifyOtp = (email, otp, purpose) =>
+  api.post('/auth/otp/verify', { email, otp, purpose });
+
+export const apiUpdateProfile = (userId, data) =>
+  api.put(`/auth/users/${userId}/profile`, data);
+
 export const authApi = {
-  /** POST /auth/login — role must be 'SYSTEM_ADMIN' | 'COLLEGE_ADMIN' etc. */
-  login: (email, password, role) =>
-    api.post('/auth/login', { email, password, role }),
-
-  /** POST /auth/register */
-  register: (data) =>
-    api.post('/auth/register', data),
-
-  /** POST /auth/logout */
-  logout: () =>
-    api.post('/auth/logout', {}),
+  login: apiLogin,
+  register: apiRegister,
+  logout: () => api.post('/auth/logout', {}),
 };
 
 export default api;
