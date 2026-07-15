@@ -8,7 +8,8 @@ const SESSION_KEY = 'spark_current_user';
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
     try {
-      return getCurrentUser();
+      const saved = localStorage.getItem(SESSION_KEY);
+      return saved ? JSON.parse(saved) : null;
     } catch (err) {
       console.error('Failed to parse user session on startup:', err);
       return null;
@@ -37,15 +38,20 @@ export const AuthProvider = ({ children }) => {
       setToken(userData.token);
     }
     // Persist user session info
+    // LoginResponse uses `name`; guard with `fullName` for any legacy callers
+    const displayName = userData.name || userData.fullName || '';
     const session = {
-      role:     userData.role,
-      email:    userData.email,
-      fullName: userData.fullName,
-      name:     userData.fullName,
-      avatar:   userData.avatarUrl,
-      token:    userData.token,
-      id:       userData.id,
-      college:  userData.college,
+      role:       userData.role,
+      email:      userData.email,
+      fullName:   displayName,
+      name:       displayName,
+      avatar:     userData.avatarUrl,
+      token:      userData.token,
+      id:         userData.id,
+      college:    userData.college,
+      adminId:    userData.adminId,
+      collegeId:  userData.collegeId,
+      department: userData.department,
     };
     localStorage.setItem(SESSION_KEY, JSON.stringify(session));
     setUser(session);

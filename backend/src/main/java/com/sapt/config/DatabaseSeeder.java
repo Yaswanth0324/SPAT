@@ -41,8 +41,20 @@ public class DatabaseSeeder implements CommandLineRunner {
     public void run(String... args) {
         log.info("DatabaseSeeder running...");
 
+        // Fix for email_verified constraint if it exists in MySQL
+        try {
+            jdbcTemplate.execute("ALTER TABLE users MODIFY COLUMN email_verified TINYINT(1) NULL");
+            log.info("DatabaseSeeder: Modified email_verified to be nullable.");
+        } catch (Exception e) {
+            log.debug("DatabaseSeeder: email_verified column skipped or not present: {}", e.getMessage());
+        }
+
         // Step 0: Migrate any existing auth_users data → users table, then drop auth_users
         migrateFromAuthUsersIfExists();
+
+        // Step 0b: Fix any college admins stuck as PENDING/inactive due to prior bug in createCollegeAdmin.
+        //           System Admin-created accounts are pre-vetted and must always be APPROVED + active.
+        fixStuckCollegeAdmins();
 
         // Step 1: Seed Demo College
         String collegeName = "Demo Engineering College";
@@ -118,6 +130,30 @@ public class DatabaseSeeder implements CommandLineRunner {
         }
 
         log.info("DatabaseSeeder complete.");
+    }
+
+    /**
+     * One-time fix: approve & activate any COLLEGE_ADMIN accounts that are
+     * stuck as PENDING / isActive=false due to the prior bug in createCollegeAdmin().
+     * Safe to run on every startup — skips already-approved accounts.
+     */
+    private void fixStuckCollegeAdmins() {
+        List<com.sapt.auth.entity.User> stuck = userRepository.findByRole(com.sapt.common.enums.UserRole.COLLEGE_ADMIN)
+                .stream()
+                .filter(u -> !u.isActive() || u.getStatus() != com.sapt.common.enums.UserStatus.APPROVED)
+                .collect(java.util.stream.Collectors.toList());
+
+        if (stuck.isEmpty()) {
+            log.info("fixStuckCollegeAdmins: no stuck accounts found.");
+            return;
+        }
+
+        for (com.sapt.auth.entity.User u : stuck) {
+            u.setActive(true);
+            u.setStatus(com.sapt.common.enums.UserStatus.APPROVED);
+            userRepository.save(u);
+            log.info("fixStuckCollegeAdmins: activated & approved college admin: {}", u.getEmail());
+        }
     }
 
     /**

@@ -41,10 +41,18 @@ public class SystemAdminServiceImpl implements SystemAdminService {
     // Profile
     // ─────────────────────────────────────────────────────────────────────────
 
+    private User findUser(String identifier) {
+        if (identifier == null) {
+            throw SaptException.badRequest("User identifier cannot be null");
+        }
+        return userRepository.findByEmail(identifier)
+                .orElseGet(() -> userRepository.findById(identifier)
+                .orElseThrow(() -> SaptException.notFound("System admin not found: " + identifier)));
+    }
+
     @Override
     public SystemAdminDto.SystemAdminProfile getProfile(String userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> SaptException.notFound("System admin not found"));
+        User user = findUser(userId);
 
         return SystemAdminDto.SystemAdminProfile.builder()
                 .id(user.getId())
@@ -60,8 +68,7 @@ public class SystemAdminServiceImpl implements SystemAdminService {
     @Override
     @Transactional
     public SystemAdminDto.SystemAdminProfile updateProfile(String userId, SystemAdminDto.UpdateProfileRequest request) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> SaptException.notFound("System admin not found"));
+        User user = findUser(userId);
 
         if (request.getFullName() != null && !request.getFullName().trim().isEmpty()) {
             user.setName(request.getFullName().trim());
@@ -111,7 +118,8 @@ public class SystemAdminServiceImpl implements SystemAdminService {
                     return collegeRepository.save(newCollege);
                 });
 
-        // 3. Create User record in `users` table (unverified/inactive)
+        // 3. Create User record in `users` table — immediately active & approved.
+        //    System Admin has already vetted this admin; credentials are sent via email.
         User collegeAdmin = User.builder()
                 .id(UUID.randomUUID().toString())
                 .role(UserRole.COLLEGE_ADMIN)
@@ -123,8 +131,8 @@ public class SystemAdminServiceImpl implements SystemAdminService {
                 .position("College Administrator")
                 .collegeId(college.getId())
                 .collegeName(college.getName())
-                .status(UserStatus.PENDING)
-                .isActive(false)
+                .status(UserStatus.APPROVED)
+                .isActive(true)
                 .build();
         collegeAdmin = userRepository.save(collegeAdmin);
         log.info("Created unverified college admin in users table: id={}, email={}", collegeAdmin.getId(), collegeAdmin.getEmail());
