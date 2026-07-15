@@ -223,6 +223,15 @@ public class AuthServiceImpl implements AuthService {
         String otp = CommonUtils.generateOtp(OTP_LENGTH);
 
         // 4. Create the User record in the unified users table
+        //
+        // NOTE: idCardUrl from the frontend is a base64-encoded image which can be
+        // 5–10 MB. TiDB Cloud enforces a hard 6 MB max row size, so storing raw base64
+        // would crash the INSERT. We store only a small flag ("uploaded") to indicate
+        // the card was provided — the actual file is not persisted server-side.
+        String idCardFlag = (request.getIdCardUrl() != null && !request.getIdCardUrl().isBlank())
+                ? "uploaded"
+                : null;
+
         User newUser = User.builder()
                 .name(request.getFullName())
                 .email(email)
@@ -238,7 +247,7 @@ public class AuthServiceImpl implements AuthService {
                 .departmentName(departmentName)
                 .mentorId(mentorId)
                 .mentorName(mentorName)
-                .idCardUrl(request.getIdCardUrl())
+                .idCardUrl(idCardFlag)
                 .build();
 
         userRepository.save(newUser);

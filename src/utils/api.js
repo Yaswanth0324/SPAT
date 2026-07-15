@@ -94,6 +94,35 @@ export const collegeAdminApi = {
     api.get(`/college-admin/users?role=${role}`),
 };
 
+// ── HOD API ───────────────────────────────────────────────────────────────────
+export const hodApi = {
+  /**
+   * GET /hod/dashboard
+   * Full department analytics: stat cards, charts, top students/mentors,
+   * approved mentor list, and pending mentor approvals list.
+   */
+  getDashboardStats: () =>
+    api.get('/hod/dashboard'),
+
+  /** GET /hod/profile — HOD's own profile */
+  getProfile: () =>
+    api.get('/hod/profile'),
+
+  /**
+   * GET /hod/mentors
+   * All APPROVED mentors in the HOD's department.
+   */
+  getMentors: () =>
+    api.get('/hod/mentors'),
+
+  /**
+   * GET /hod/mentor-approvals
+   * All PENDING mentor registrations in the HOD's department.
+   */
+  getPendingMentors: () =>
+    api.get('/hod/mentor-approvals'),
+};
+
 // ── Shared Auth-scoped API helpers (used across multiple role pages) ───────────
 /**
  * GET /auth/users?collegeName=X&role=HOD|MENTOR|STUDENT

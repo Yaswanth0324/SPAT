@@ -41,17 +41,33 @@ export const AuthProvider = ({ children }) => {
     // LoginResponse uses `name`; guard with `fullName` for any legacy callers
     const displayName = userData.name || userData.fullName || '';
     const session = {
-      role:       userData.role,
-      email:      userData.email,
-      fullName:   displayName,
-      name:       displayName,
-      avatar:     userData.avatarUrl,
-      token:      userData.token,
-      id:         userData.id,
-      college:    userData.college,
-      adminId:    userData.adminId,
-      collegeId:  userData.collegeId,
-      department: userData.department,
+      role:           userData.role,
+      email:          userData.email,
+      fullName:       displayName,
+      name:           displayName,
+      avatar:         userData.avatarUrl || userData.avatar,
+      avatarUrl:      userData.avatarUrl || userData.avatar,
+      token:          userData.token,
+      id:             userData.id,
+      // college — LoginResponse has `college`; User entity exposes getCollege() → collegeName
+      college:        userData.college     || userData.collegeName,
+      collegeName:    userData.collegeName || userData.college,
+      adminId:        userData.adminId,
+      collegeId:      userData.collegeId,
+      // department — LoginResponse has `department`; User entity exposes getDepartment() → departmentName
+      department:     userData.department     || userData.departmentName,
+      departmentName: userData.departmentName || userData.department,
+      departmentId:   userData.departmentId,
+      // profile fields — previously missing, causing phone/position to vanish after save
+      phone:          userData.phone,
+      position:       userData.position,
+      status:         userData.status,
+      profileImage:   userData.avatarUrl || userData.avatar || userData.profileImage,
+      // role-specific
+      rollNo:         userData.rollNo,
+      mentorId:       userData.mentorId,
+      mentorName:     userData.mentorName,
+      hodId:          userData.hodId,
     };
     localStorage.setItem(SESSION_KEY, JSON.stringify(session));
     setUser(session);
