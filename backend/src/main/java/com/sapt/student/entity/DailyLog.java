@@ -81,7 +81,10 @@ public class DailyLog {
     @Column(name = "remarked_by", columnDefinition = "CHAR(36)")
     private String remarkedBy;
 
-    /** When the mentor added the remark */
+    @Column(name = "review_status", length = 20)
+    @Builder.Default
+    private String reviewStatus = "pending";
+
     @Column(name = "remarked_at")
     private LocalDateTime remarkedAt;
 

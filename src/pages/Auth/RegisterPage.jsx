@@ -40,8 +40,13 @@ const RegisterPage = () => {
   useEffect(() => {
     let active = true;
     const loadColleges = async () => {
-      const list = await apiGetColleges();
-      if (active) setColleges(list);
+      try {
+        const list = await apiGetColleges();
+        if (active && list) setColleges(list);
+      } catch (err) {
+        console.error("Failed to load colleges:", err);
+        showToast("Failed to load colleges. Please check server status.", "error");
+      }
     };
     loadColleges();
     return () => { active = false; };

@@ -178,7 +178,7 @@ public class CollegeAdminServiceImpl implements CollegeAdminService {
                     int approvedCount   = (int) mentorSubs.stream().filter(s -> s.getStatus() == SubmissionStatus.APPROVED).count();
                     int processedCount  = (int) mentorSubs.stream().filter(s -> s.getStatus() == SubmissionStatus.APPROVED
                                                                              || s.getStatus() == SubmissionStatus.REJECTED).count();
-                    int successRate     = processedCount > 0 ? Math.round((approvedCount * 100f) / processedCount) : 100;
+                    int successRate     = processedCount > 0 ? Math.round((approvedCount * 100f) / processedCount) : 0;
                     int creditsGuided   = mentorSubs.stream().filter(s -> s.getStatus() == SubmissionStatus.APPROVED)
                                                    .mapToInt(Submission::getAwardedCredits).sum();
                     return CollegeAdminDto.MentorPerformance.builder()

@@ -51,6 +51,8 @@ public class SecurityConfig {
     private final PasswordEncoder passwordEncoder;
     /** Injected from CorsConfig — avoids duplicate bean definition */
     private final CorsConfigurationSource corsConfigurationSource;
+    /** Returns JSON 401 instead of Spring's default HTML error page */
+    private final JsonAuthEntryPoint jsonAuthEntryPoint;
 
     /**
      * Main security filter chain configuration.
@@ -63,6 +65,7 @@ public class SecurityConfig {
         http
             .csrf(csrf -> csrf.disable())
             .cors(cors -> cors.configurationSource(corsConfigurationSource))
+            .headers(headers -> headers.frameOptions(frame -> frame.disable()))
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
@@ -77,12 +80,18 @@ public class SecurityConfig {
                     "/auth/logout",
                     "/auth/colleges",
                     "/auth/colleges/**",
-                    "/auth/mentors"
+                    "/auth/mentors",
+                    "/submission/files/download",
+                    "/reviews",
+                    "/reviews/**"
                 ).permitAll()
 
                 // ---- All other requests require authentication ----
                 // Role-specific access is enforced via @PreAuthorize in controllers
                 .anyRequest().authenticated()
+            )
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint(jsonAuthEntryPoint)
             )
             .authenticationProvider(authenticationProvider())
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

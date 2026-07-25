@@ -37,7 +37,7 @@ public class OtpMailService {
     @Async
     public void sendEmailVerificationOtp(String toEmail, String fullName, String otp) {
         try {
-            String subject  = "SAPT - Verify Your Email Address";
+            String subject  = "SPAT - Verify Your Email Address";
             String htmlBody = MailTemplates.buildOtpEmail(otp, "Email Verification", fullName);
             mailService.sendHtmlMail(toEmail, subject, htmlBody);
             log.info("Email verification OTP sent to: {}", toEmail);
@@ -56,7 +56,7 @@ public class OtpMailService {
     @Async
     public void sendPasswordResetOtp(String toEmail, String otp) {
         try {
-            String subject  = "SAPT - Password Reset OTP";
+            String subject  = "SPAT - Password Reset OTP";
             String htmlBody = MailTemplates.buildOtpEmail(otp, "Password Reset", null);
             mailService.sendHtmlMail(toEmail, subject, htmlBody);
             log.info("Password reset OTP sent to: {}", toEmail);

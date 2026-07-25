@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Users, Award, BookOpen, GraduationCap, TrendingUp,
   Star, Briefcase, Code, Download, FileText
@@ -9,192 +9,79 @@ import {
   ResponsiveContainer
 } from 'recharts';
 import { useAuth } from '../../../context/AuthContext';
-import { getUsers, getSubmissions } from '../../../utils/localStorage';
-import { ROLES, STAR_THRESHOLDS, getStars, getAchievementBadge } from '../../../utils/mockData';
+import { hodApi } from '../../../utils/api';
+import { STAR_THRESHOLDS } from '../../../utils/mockData';
 import { StatCard, Badge, useToast, Avatar } from '../../../components/ui/UIComponents';
 
 export const HODDashboard = () => {
   const { user } = useAuth();
   const { showToast, ToastComponent } = useToast();
 
-  // --- Read Database & Calculate CSE Stats ---
-  const {
-    departmentStudents,
-    departmentMentors,
-    approvedSubmissions,
-    hackathonsWon,
-    hackathonsParticipated,
-    coursesDone,
-    internshipsDone,
-    topStudents,
-    topMentors,
-    factorCounts,
-    skillTrendData
-  } = useMemo(() => {
-    const allUsers = getUsers();
-    const allSubmissions = getSubmissions();
+  // ── API state ────────────────────────────────────────────────────────
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-    // Filter by HOD's college and department
-    const mentors = allUsers.filter(
-      u => u.role === ROLES.MENTOR &&
-      u.college === user.college &&
-      u.department === user.department &&
-      u.status === 'approved'
-    );
-
-    const students = allUsers.filter(
-      u => u.role === ROLES.STUDENT &&
-      u.college === user.college &&
-      u.department === user.department &&
-      u.status === 'approved'
-    );
-
-    const studentIds = new Set(students.map(s => s.id));
-    const subs = allSubmissions.filter(s => studentIds.has(s.studentId));
-    const approved = subs.filter(s => s.status === 'approved');
-
-    // Calculate metrics: won vs participated hackathons, courses done, internships done
-    let hackWon = 0;
-    let hackPart = 0;
-    let courses = 0;
-    let internships = 0;
-
-    approved.forEach(sub => {
-      if (['Hackathons', 'Ideathons', 'Coding Competitions'].includes(sub.type)) {
-        const typeLower = (sub.achievementType || '').toLowerCase();
-        if (typeLower.includes('winner') || typeLower.includes('finalist') || typeLower.includes('rank') || typeLower.includes('1st')) {
-          hackWon++;
-        } else {
-          hackPart++;
-        }
-      } else if (['Certifications & Online Courses', 'Workshops', 'Seminars & Guest Lectures'].includes(sub.type)) {
-        courses++;
-      } else if (sub.type === 'Internships') {
-        internships++;
+  useEffect(() => {
+    let active = true;
+    const fetchStats = async () => {
+      setLoading(true);
+      try {
+        const data = await hodApi.getDashboardStats();
+        if (active) setStats(data);
+      } catch (err) {
+        if (active) showToast('Failed to load department stats from server', 'error');
+      } finally {
+        if (active) setLoading(false);
       }
-    });
-
-    // Student performance breakdown
-    const studentPerformance = students.map(student => {
-      const studentSubs = approved.filter(s => s.studentId === student.id);
-      const cr = studentSubs.reduce((sum, s) => sum + (s.credits || 0), 0);
-      const act = studentSubs.length;
-
-      // Factors count
-      const hackathons = studentSubs.filter(s => ['Hackathons', 'Ideathons', 'Coding Competitions'].includes(s.type)).length;
-      const certifications = studentSubs.filter(s => ['Certifications & Online Courses', 'Workshops', 'Seminars & Guest Lectures'].includes(s.type)).length;
-      const internshipsCount = studentSubs.filter(s => s.type === 'Internships').length;
-      const projects = studentSubs.filter(s => ['Mini Projects', 'Major Projects', 'Freelancing & Real-World Work'].includes(s.type)).length;
-      const publications = studentSubs.filter(s => ['Conferences', 'Research & Publications'].includes(s.type)).length;
-
-      return {
-        ...student,
-        credits: cr,
-        activitiesCount: act,
-        starsCount: getStars(cr),
-        badge: getAchievementBadge(getStars(cr)),
-        factors: { hackathons, certifications, internships: internshipsCount, projects, publications }
-      };
-    });
-
-    // Sort Top Students by total credits
-    const topStus = [...studentPerformance]
-      .sort((a, b) => b.credits - a.credits)
-      .slice(0, 3);
-
-    // Mentor performance calculation
-    const mentorPerformance = mentors.map(mentor => {
-      const mentees = students.filter(s => s.mentorId === mentor.id);
-      const menteeIds = new Set(mentees.map(m => m.id));
-      const mentorApproved = approved.filter(s => menteeIds.has(s.studentId));
-      
-      const totalCrGuided = mentorApproved.reduce((sum, s) => sum + (s.credits || 0), 0);
-      const reviews = subs.filter(s => s.mentorId === mentor.id).length;
-      const approvals = subs.filter(s => s.mentorId === mentor.id && s.status === 'approved').length;
-      const successRate = reviews > 0 ? Math.round((approvals / reviews) * 100) : 0;
-
-      return {
-        ...mentor,
-        creditsGuided: totalCrGuided,
-        reviewsHandled: reviews,
-        approvalsCount: approvals,
-        successRate
-      };
-    });
-
-    // Sort Top Mentors by approval/success percentage
-    const topMens = [...mentorPerformance]
-      .sort((a, b) => b.successRate - a.successRate)
-      .slice(0, 3);
-
-    // Placement Factors Count for Charts
-    const factors = {
-      'Hackathons': 0,
-      'Certifications': 0,
-      'Internships': 0,
-      'Projects': 0,
-      'Publications': 0,
     };
-    approved.forEach(sub => {
-      if (['Hackathons', 'Ideathons', 'Coding Competitions'].includes(sub.type)) {
-        factors['Hackathons']++;
-      } else if (['Certifications & Online Courses', 'Workshops', 'Seminars & Guest Lectures'].includes(sub.type)) {
-        factors['Certifications']++;
-      } else if (sub.type === 'Internships') {
-        factors['Internships']++;
-      } else if (['Mini Projects', 'Major Projects', 'Freelancing & Real-World Work'].includes(sub.type)) {
-        factors['Projects']++;
-      } else if (['Conferences', 'Research & Publications'].includes(sub.type)) {
-        factors['Publications']++;
-      }
-    });
+    fetchStats();
+    return () => { active = false; };
+  }, []);
 
-    // Skill acquisition monthly trend
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const monthlyMap = {};
-    months.forEach(m => { monthlyMap[m] = 0; });
-    approved.forEach(sub => {
-      const dateStr = sub.date || sub.submittedAt;
-      if (dateStr) {
-        const monthIndex = new Date(dateStr).getMonth();
-        const mName = months[monthIndex];
-        if (monthlyMap[mName] !== undefined) {
-          monthlyMap[mName]++;
-        }
-      }
-    });
+  // ── Destructure API response (mirror old useMemo field names) ────────
+  const departmentMentors      = stats?.topMentors ?? [];
+  const departmentStudents     = stats?.topStudents ?? [];  // used only for length
+  const approvedSubmissions    = [];                         // not used in render
+  const hackathonsWon          = stats?.hackathonsWon ?? 0;
+  const hackathonsParticipated = stats?.hackathonsParticipated ?? 0;
+  const coursesDone            = stats?.coursesDone ?? 0;
+  const internshipsDone        = stats?.internshipsDone ?? 0;
+  const topStudents            = stats?.topStudents ?? [];
+  const topMentors             = stats?.topMentors ?? [];
+  const factorCounts           = stats?.factorCounts ?? {
+    Hackathons: 0, Certifications: 0, Internships: 0, Projects: 0, Publications: 0,
+  };
+  const skillTrendData         = stats?.skillTrendData ?? [];
 
-    const trend = months.map(m => ({
-      month: m,
-      achievements: monthlyMap[m] || 0,
-    }));
+  // total counts come from the full dept lists inside stats
+  const totalMentors  = stats?.totalMentors  ?? 0;
+  const totalStudents = stats?.totalStudents ?? 0;
 
-    return {
-      departmentStudents: studentPerformance,
-      departmentMentors: mentorPerformance,
-      approvedSubmissions: approved,
-      hackathonsWon: hackWon,
-      hackathonsParticipated: hackPart,
-      coursesDone: courses,
-      internshipsDone: internships,
-      topStudents: topStus,
-      topMentors: topMens,
-      factorCounts: factors,
-      skillTrendData: trend
-    };
-  }, [user]);
-
-  // --- Recharts colors mapping ---
+  // ── Recharts colors ──────────────────────────────────────────────────
   const chartColors = ['#f97316', '#3b82f6', '#10b981', '#8b5cf6', '#ec4899'];
   const factorsData = Object.entries(factorCounts).map(([name, count], index) => ({
     name,
     count,
-    fill: chartColors[index]
+    fill: chartColors[index % chartColors.length],
   }));
 
-  // --- Real-time PDF Report Print Generator ---
-  const handleDownloadPDF = () => {
+  // ── PDF Report Generator ─────────────────────────────────────────────
+  const handleDownloadPDF = async () => {
     showToast('Generating department placement report PDF... ✓', 'success');
+
+    // Fetch logo and convert to base64 data URI so it works in blank popup windows
+    let logoDataUri = '';
+    try {
+      const resp = await fetch(`${window.location.origin}/spat-logo2.png`);
+      if (resp.ok) {
+        const blob = await resp.blob();
+        logoDataUri = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.readAsDataURL(blob);
+        });
+      }
+    } catch (_) { /* logo not critical */ }
 
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
@@ -206,6 +93,9 @@ export const HODDashboard = () => {
       <html>
         <head>
           <title>Placement Readiness Report - ${user.department}</title>
+          <link rel="preconnect" href="https://fonts.googleapis.com">
+          <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+          <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@800;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
           <style>
             body { 
               font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
@@ -333,6 +223,10 @@ export const HODDashboard = () => {
         </head>
         <body>
           <div class="header">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 15px;">
+              ${logoDataUri ? `<img src="${logoDataUri}" style="width: 32px; height: 32px; object-fit: contain; border-radius: 8px;" />` : ''}
+              <span style="font-size: 26px; font-weight: 900; color: #ea580c; font-family: 'Outfit', sans-serif; letter-spacing: -0.5px;">SPAT</span>
+            </div>
             <h1 class="title">${user.college}</h1>
             <p class="subtitle">Placement Readiness Report | Department of ${user.department}</p>
             <div class="metadata">
@@ -355,17 +249,17 @@ export const HODDashboard = () => {
               <tr>
                 <th>Placement Metric</th>
                 <th>Approved Milestones (Department)</th>
-                <th>Status assessment</th>
+                <th>Status Assessment</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td><strong>Hackathons & Coding Contests</strong></td>
+                <td><strong>Hackathons &amp; Coding Contests</strong></td>
                 <td>${factorCounts['Hackathons']} achievements (Won: ${hackathonsWon}, Participated: ${hackathonsParticipated})</td>
                 <td>High Technical Competency</td>
               </tr>
               <tr>
-                <td><strong>Industry Certifications & Courses</strong></td>
+                <td><strong>Industry Certifications &amp; Courses</strong></td>
                 <td>${factorCounts['Certifications']} modules completed</td>
                 <td>Domain Proficiency Confirmed</td>
               </tr>
@@ -380,7 +274,7 @@ export const HODDashboard = () => {
                 <td>Strong Hands-on Portfolio</td>
               </tr>
               <tr>
-                <td><strong>Research & Publications</strong></td>
+                <td><strong>Research &amp; Publications</strong></td>
                 <td>${factorCounts['Publications']} publications</td>
                 <td>Analytical Skills Demonstrated</td>
               </tr>
@@ -392,9 +286,9 @@ export const HODDashboard = () => {
             ${topStudents.map((stu, i) => `
               <div class="row-item">
                 <div>
-                  <span class="row-name">#${i+1} ${stu.name} (${stu.rollNo || 'CS2100' + (i+1)})</span>
+                  <span class="row-name">#${i+1} ${stu.name} (${stu.rollNo || 'N/A'})</span>
                   <div class="row-details">
-                    ${stu.factors.hackathons} Hackathons | ${stu.factors.certifications} Certifications | ${stu.factors.internships} Internships
+                    ${stu.factors ? `${stu.factors.hackathons} Hackathons | ${stu.factors.certifications} Certifications | ${stu.factors.internships} Internships` : ''}
                   </div>
                 </div>
                 <div style="text-align: right; font-weight: 800; color: #ea580c;">
@@ -425,7 +319,7 @@ export const HODDashboard = () => {
               <p style="margin: 4px 0 0 0;">All credentials verified under Institutional parameters.</p>
             </div>
             <div>
-              <div class="signature-line">Dr. Priya Sharma</div>
+              <div class="signature-line">${user.name}</div>
               <p style="text-align: center; margin: 5px 0 0 0; font-size: 11px; color: #64748b;">Head of Department</p>
             </div>
           </div>
@@ -441,6 +335,27 @@ export const HODDashboard = () => {
     printWindow.document.write(printContent);
     printWindow.document.close();
   };
+
+  // ── Loading skeleton ─────────────────────────────────────────────────
+  if (loading) {
+    return (
+      <div className="animate-fade-in space-y-8 pb-12">
+        <div className="border-b border-slate-100 dark:border-dark-800 pb-5">
+          <div className="h-8 w-64 bg-slate-200 dark:bg-dark-800 rounded-xl animate-pulse" />
+          <div className="h-4 w-48 bg-slate-100 dark:bg-dark-850 rounded-lg mt-2 animate-pulse" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-5">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="h-24 bg-slate-100 dark:bg-dark-850 rounded-2xl animate-pulse" />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="h-80 bg-slate-100 dark:bg-dark-850 rounded-3xl animate-pulse" />
+          <div className="h-80 bg-slate-100 dark:bg-dark-850 rounded-3xl animate-pulse" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="animate-fade-in space-y-8 pb-12">
@@ -472,13 +387,13 @@ export const HODDashboard = () => {
         <StatCard
           icon={<Users className="w-6 h-6 text-orange-600" />}
           label="Total Mentors"
-          value={departmentMentors.length}
+          value={totalMentors}
           color="primary"
         />
         <StatCard
           icon={<GraduationCap className="w-6 h-6 text-emerald-600" />}
           label="Total Students"
-          value={departmentStudents.length}
+          value={totalStudents}
           color="green"
         />
         <StatCard
@@ -597,10 +512,10 @@ export const HODDashboard = () => {
 
           <div className="space-y-4">
             {topStudents.map((student, i) => {
-              const stars = student.starsCount;
-              const badgeType = student.badge;
+              const stars = student.starsCount ?? 0;
+              const badgeType = student.badge ?? 'Beginner';
               const maxThreshold = STAR_THRESHOLDS[4].credits;
-              const progressPercentage = Math.min((student.credits / maxThreshold) * 100, 100);
+              const progressPercentage = Math.min(((student.credits ?? 0) / maxThreshold) * 100, 100);
 
               return (
                 <div key={student.id} className="relative flex items-center gap-3 p-3 bg-slate-50 dark:bg-dark-850 rounded-2xl hover:scale-[1.01] transition-transform">

@@ -123,5 +123,43 @@ public class SystemAdminDto {
         private long suspendedColleges;
         private long totalCollegeAdmins;
         private long totalUsers;
+        private List<MonthlyGrowthDto> monthlyGrowth;
+        private List<SubmissionAnalyticsDto> submissionAnalytics;
+        private List<CollegeActivityDto> collegeActivity;
+        private List<CollegePerformanceDto> collegePerformance;
+    }
+
+    @Data
+    @Builder
+    public static class MonthlyGrowthDto {
+        private String name;
+        private long colleges;
+        private long users;
+        private long submissions;
+    }
+
+    @Data
+    @Builder
+    public static class SubmissionAnalyticsDto {
+        private String name;
+        private long approved;
+        private long rejected;
+    }
+
+    @Data
+    @Builder
+    public static class CollegeActivityDto {
+        private String name;
+        private long value;
+        private String color;
+    }
+
+    @Data
+    @Builder
+    public static class CollegePerformanceDto {
+        private String name;
+        private long credits;
+        private long submissions;
+        private long students;
     }
 }
