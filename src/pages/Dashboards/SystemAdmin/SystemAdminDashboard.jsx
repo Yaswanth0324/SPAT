@@ -230,16 +230,57 @@ export const SystemAdminAnalyticsDashboard = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ChartCard>
           <SectionHeader icon={TrendingUp} title="Monthly Platform Growth" subtitle="Colleges, Users & Submissions (Jan–Dec)" />
-          <div className="h-[260px] flex items-center justify-center">
-            <EmptyChart message="Connect backend analytics to populate growth chart" />
-          </div>
+          {statsLoading ? (
+            <div className="h-[260px] flex items-center justify-center">
+              <RefreshCw className="w-8 h-8 text-orange-400 animate-spin" />
+            </div>
+          ) : !stats?.monthlyGrowth?.length ? (
+            <div className="h-[260px] flex items-center justify-center">
+              <EmptyChart message="No monthly growth data available" />
+            </div>
+          ) : (
+            <div className="h-[260px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={stats.monthlyGrowth} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis dataKey="name" stroke="#94a3b8" fontSize={11} tickLine={false} />
+                  <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: 11, paddingTop: 10 }} />
+                  <Line type="monotone" name="Colleges" dataKey="colleges" stroke="#ea580c" strokeWidth={3} dot={false} activeDot={{ r: 6 }} />
+                  <Line type="monotone" name="Users" dataKey="users" stroke="#7c3aed" strokeWidth={3} dot={false} activeDot={{ r: 6 }} />
+                  <Line type="monotone" name="Submissions" dataKey="submissions" stroke="#10b981" strokeWidth={3} dot={false} activeDot={{ r: 6 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </ChartCard>
 
         <ChartCard>
           <SectionHeader icon={FileText} title="Submission Analytics" subtitle="Approved vs Rejected (Monthly)" />
-          <div className="h-[260px] flex items-center justify-center">
-            <EmptyChart message="Connect backend analytics to populate submission chart" />
-          </div>
+          {statsLoading ? (
+            <div className="h-[260px] flex items-center justify-center">
+              <RefreshCw className="w-8 h-8 text-orange-400 animate-spin" />
+            </div>
+          ) : !stats?.submissionAnalytics?.length ? (
+            <div className="h-[260px] flex items-center justify-center">
+              <EmptyChart message="No submission analytics available" />
+            </div>
+          ) : (
+            <div className="h-[260px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={stats.submissionAnalytics} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis dataKey="name" stroke="#94a3b8" fontSize={11} tickLine={false} />
+                  <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: 11, paddingTop: 10 }} />
+                  <Bar name="Approved" dataKey="approved" fill="#10b981" radius={[4, 4, 0, 0]} />
+                  <Bar name="Rejected" dataKey="rejected" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </ChartCard>
       </div>
 
@@ -247,9 +288,42 @@ export const SystemAdminAnalyticsDashboard = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ChartCard>
           <SectionHeader icon={Globe} title="College Activity Distribution" subtitle="Activity contribution by top colleges" />
-          <div className="h-[220px] flex items-center justify-center">
-            <EmptyChart message="Aggregated college analytics — connect backend" />
-          </div>
+          {statsLoading ? (
+            <div className="h-[220px] flex items-center justify-center">
+              <RefreshCw className="w-8 h-8 text-orange-400 animate-spin" />
+            </div>
+          ) : !stats?.collegeActivity?.length ? (
+            <div className="h-[220px] flex items-center justify-center">
+              <EmptyChart message="No college activity distribution data available" />
+            </div>
+          ) : (
+            <div className="flex flex-col sm:flex-row items-center gap-6 h-[220px]">
+              <ResponsiveContainer width={200} height={220}>
+                <PieChart>
+                  <Pie
+                    data={stats.collegeActivity}
+                    cx="50%" cy="50%" innerRadius={55} outerRadius={90} paddingAngle={3} dataKey="value"
+                  >
+                    {stats.collegeActivity.map((entry, i) => (
+                      <Cell key={i} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(v) => v.toLocaleString()} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="flex flex-col gap-2 flex-1 max-h-[200px] overflow-y-auto pr-2">
+                {stats.collegeActivity.map(item => (
+                  <div key={item.name} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: item.color }} />
+                      <span className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate" title={item.name}>{item.name}</span>
+                    </div>
+                    <span className="font-bold text-xs shrink-0" style={{ color: item.color }}>{item.value?.toLocaleString() ?? 0}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </ChartCard>
 
         <ChartCard>
@@ -295,12 +369,33 @@ export const SystemAdminAnalyticsDashboard = () => {
         </ChartCard>
       </div>
 
-      {/* ── College Performance Bar Chart placeholder ── */}
+      {/* ── College Performance Bar Chart ── */}
       <ChartCard>
         <SectionHeader icon={BarChart2} title="College Performance Comparison" subtitle="Top colleges — Credits, Submissions, Students" />
-        <div className="h-[300px] flex items-center justify-center">
-          <EmptyChart message="Connect college analytics endpoint to show performance chart" />
-        </div>
+        {statsLoading ? (
+          <div className="h-[300px] flex items-center justify-center">
+            <RefreshCw className="w-8 h-8 text-orange-400 animate-spin" />
+          </div>
+        ) : !stats?.collegePerformance?.length ? (
+          <div className="h-[300px] flex items-center justify-center">
+            <EmptyChart message="No college performance data available" />
+          </div>
+        ) : (
+          <div className="h-[300px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={stats.collegePerformance} margin={{ top: 15, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="name" stroke="#94a3b8" fontSize={11} tickLine={false} />
+                <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend iconType="circle" wrapperStyle={{ fontSize: 11, paddingTop: 10 }} />
+                <Bar name="Credits Earned" dataKey="credits" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                <Bar name="Total Submissions" dataKey="submissions" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                <Bar name="Active Students" dataKey="students" fill="#10b981" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
       </ChartCard>
 
       {/* ── Active Colleges Modal ── */}

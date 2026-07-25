@@ -35,6 +35,7 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final com.sapt.security.jwt.JwtUtil jwtUtil;
 
     /**
      * Authenticate user with email, password, and role.
@@ -142,10 +143,53 @@ public class AuthController {
     }
 
     @PutMapping("/users/{userId}/profile")
-    public ResponseEntity<ApiResponse<com.sapt.auth.entity.User>> updateProfile(
+    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> updateProfile(
             @PathVariable String userId,
             @RequestBody com.sapt.auth.dto.ProfileUpdateRequest request) {
         com.sapt.auth.entity.User updated = authService.updateProfile(userId, request);
-        return ResponseEntity.ok(ApiResponse.success("Profile updated successfully", updated));
+        
+        // Generate a new token based on the updated user data
+        org.springframework.security.core.userdetails.UserDetails userDetails = 
+                org.springframework.security.core.userdetails.User.builder()
+                        .username(updated.getEmail())
+                        .password(updated.getPasswordHash())
+                        .authorities(java.util.Collections.singletonList(
+                                new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_" + updated.getRole().name())
+                        ))
+                        .build();
+        String token = jwtUtil.generateToken(userDetails);
+        
+        // Build user map with all expected frontend session keys
+        java.util.Map<String, Object> userMap = new java.util.HashMap<>();
+        userMap.put("id", updated.getId());
+        userMap.put("name", updated.getName());
+        userMap.put("fullName", updated.getName());
+        userMap.put("email", updated.getEmail());
+        userMap.put("phone", updated.getPhone());
+        userMap.put("avatar", updated.getAvatarUrl());
+        userMap.put("avatarUrl", updated.getAvatarUrl());
+        userMap.put("profileImage", updated.getAvatarUrl());
+        userMap.put("role", updated.getRole().name());
+        userMap.put("status", updated.getStatus().name());
+        userMap.put("collegeId", updated.getCollegeId());
+        userMap.put("college", updated.getCollegeName());
+        userMap.put("collegeName", updated.getCollegeName());
+        userMap.put("departmentId", updated.getDepartmentId());
+        userMap.put("department", updated.getDepartmentName());
+        userMap.put("departmentName", updated.getDepartmentName());
+        userMap.put("mentorId", updated.getMentorId());
+        userMap.put("mentorName", updated.getMentorName());
+        userMap.put("hodId", updated.getHodId());
+        userMap.put("adminId", updated.getAdminId());
+        userMap.put("position", updated.getPosition());
+        userMap.put("rollNo", updated.getRollNo());
+        userMap.put("token", token);
+        
+        // Wrap response
+        java.util.Map<String, Object> responseData = new java.util.HashMap<>();
+        responseData.put("user", userMap);
+        responseData.put("token", token);
+        
+        return ResponseEntity.ok(ApiResponse.success("Profile updated successfully", responseData));
     }
 }

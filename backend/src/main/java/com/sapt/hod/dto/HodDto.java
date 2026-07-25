@@ -189,6 +189,15 @@ public class HodDto {
         private String hodId;
         private LocalDateTime createdAt;
         private LocalDateTime lastLoginAt;
+
+        // Mentor statistics fields (calculated on the backend using real DB data)
+        private Integer successRate;
+        private Integer reviewsHandled;
+        private Integer approvalsCount;
+        private Integer rejectedCount;
+        private Integer pendingCount;
+        private Integer creditsGuided;
+        private Integer studentCount;
     }
 
     // =====================================================================

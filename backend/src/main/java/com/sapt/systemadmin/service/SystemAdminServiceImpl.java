@@ -18,9 +18,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import com.sapt.submission.repository.SubmissionRepository;
 
 
 /**
@@ -36,6 +38,7 @@ public class SystemAdminServiceImpl implements SystemAdminService {
     private final CollegeRepository collegeRepository;
     private final PasswordEncoder passwordEncoder;
     private final MailService mailService;
+    private final SubmissionRepository submissionRepository;
 
     // ─────────────────────────────────────────────────────────────────────────
     // Profile
@@ -149,7 +152,7 @@ public class SystemAdminServiceImpl implements SystemAdminService {
                     verifyLink
             );
             mailService.sendHtmlMail(req.getAdminEmail().trim(),
-                    "SAPT - College Admin Registration & Verification", htmlBody);
+                    "SPAT - College Admin Registration & Verification", htmlBody);
             log.info("Verification email sent to: {}", req.getAdminEmail());
         } catch (Exception e) {
             log.error("Failed to send verification email to {}: {}", req.getAdminEmail(), e.getMessage());
@@ -279,6 +282,121 @@ public class SystemAdminServiceImpl implements SystemAdminService {
         long totalAdmins      = userRepository.findByRole(UserRole.COLLEGE_ADMIN).size();
         long totalUsers       = userRepository.count();
 
+        int currentYear = LocalDate.now().getYear();
+
+        List<College> allColleges = collegeRepository.findAll();
+        List<User> allUsers = userRepository.findAll();
+        List<com.sapt.submission.entity.Submission> allSubmissions = submissionRepository.findAll();
+
+        // 1. Monthly Platform Growth (cumulative)
+        String[] monthNames = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+        List<SystemAdminDto.MonthlyGrowthDto> monthlyGrowth = new java.util.ArrayList<>();
+
+        for (int m = 1; m <= 12; m++) {
+            final int month = m;
+
+            long collegeCount = allColleges.stream().filter(c -> {
+                LocalDateTime ldt = c.getCreatedAt();
+                if (ldt == null) return true; // baseline
+                if (ldt.getYear() < currentYear) return true;
+                return ldt.getYear() == currentYear && ldt.getMonthValue() <= month;
+            }).count();
+
+            long userCount = allUsers.stream().filter(u -> {
+                LocalDateTime ldt = u.getCreatedAt();
+                if (ldt == null) return true; // baseline
+                if (ldt.getYear() < currentYear) return true;
+                return ldt.getYear() == currentYear && ldt.getMonthValue() <= month;
+            }).count();
+
+            long submissionCount = allSubmissions.stream().filter(s -> {
+                LocalDateTime ldt = s.getSubmittedAt();
+                if (ldt == null) return true; // baseline
+                if (ldt.getYear() < currentYear) return true;
+                return ldt.getYear() == currentYear && ldt.getMonthValue() <= month;
+            }).count();
+
+            monthlyGrowth.add(SystemAdminDto.MonthlyGrowthDto.builder()
+                    .name(monthNames[m - 1])
+                    .colleges(collegeCount)
+                    .users(userCount)
+                    .submissions(submissionCount)
+                    .build());
+        }
+
+        // 2. Submission Analytics (Approved vs Rejected per Month)
+        List<SystemAdminDto.SubmissionAnalyticsDto> submissionAnalytics = new java.util.ArrayList<>();
+        for (int m = 1; m <= 12; m++) {
+            final int month = m;
+
+            long approvedCount = allSubmissions.stream().filter(s -> {
+                LocalDateTime ldt = s.getSubmittedAt();
+                if (ldt == null) return false;
+                return ldt.getYear() == currentYear && ldt.getMonthValue() == month && s.getStatus() == com.sapt.common.enums.SubmissionStatus.APPROVED;
+            }).count();
+
+            long rejectedCount = allSubmissions.stream().filter(s -> {
+                LocalDateTime ldt = s.getSubmittedAt();
+                if (ldt == null) return false;
+                return ldt.getYear() == currentYear && ldt.getMonthValue() == month && s.getStatus() == com.sapt.common.enums.SubmissionStatus.REJECTED;
+            }).count();
+
+            submissionAnalytics.add(SystemAdminDto.SubmissionAnalyticsDto.builder()
+                    .name(monthNames[m - 1])
+                    .approved(approvedCount)
+                    .rejected(rejectedCount)
+                    .build());
+        }
+
+        // 3. College Activity Distribution (Submissions per college)
+        java.util.Map<String, String> userToCollegeMap = allUsers.stream()
+                .filter(u -> u.getId() != null)
+                .collect(Collectors.toMap(User::getId, u -> u.getCollegeName() != null ? u.getCollegeName() : "Unknown", (v1, v2) -> v1));
+
+        java.util.Map<String, Long> collegeSubmissionsCount = allSubmissions.stream()
+                .map(s -> userToCollegeMap.getOrDefault(s.getStudentId(), "Unknown"))
+                .collect(Collectors.groupingBy(name -> name, Collectors.counting()));
+
+        String[] colors = {"#ea580c", "#3b82f6", "#10b981", "#8b5cf6", "#ec4899", "#f59e0b", "#06b6d4"};
+        List<SystemAdminDto.CollegeActivityDto> collegeActivity = new java.util.ArrayList<>();
+        int colorIdx = 0;
+        for (java.util.Map.Entry<String, Long> entry : collegeSubmissionsCount.entrySet()) {
+            if ("Unknown".equals(entry.getKey())) continue;
+            collegeActivity.add(SystemAdminDto.CollegeActivityDto.builder()
+                    .name(entry.getKey())
+                    .value(entry.getValue())
+                    .color(colors[colorIdx % colors.length])
+                    .build());
+            colorIdx++;
+        }
+
+        // 4. College Performance Comparison
+        java.util.Map<String, List<User>> studentsByCollege = allUsers.stream()
+                .filter(u -> u.getRole() == UserRole.STUDENT && u.getCollegeName() != null)
+                .collect(Collectors.groupingBy(User::getCollegeName));
+
+        java.util.Map<String, List<com.sapt.submission.entity.Submission>> submissionsByCollege = allSubmissions.stream()
+                .filter(s -> s.getStudentId() != null && userToCollegeMap.containsKey(s.getStudentId()))
+                .collect(Collectors.groupingBy(s -> userToCollegeMap.get(s.getStudentId())));
+
+        List<SystemAdminDto.CollegePerformanceDto> collegePerformance = new java.util.ArrayList<>();
+        for (String collegeName : allColleges.stream().map(College::getName).collect(Collectors.toSet())) {
+            List<User> students = studentsByCollege.getOrDefault(collegeName, java.util.Collections.emptyList());
+            List<com.sapt.submission.entity.Submission> submissions = submissionsByCollege.getOrDefault(collegeName, java.util.Collections.emptyList());
+
+            long creditsSum = submissions.stream()
+                    .filter(s -> s.getStatus() == com.sapt.common.enums.SubmissionStatus.APPROVED)
+                    .mapToLong(com.sapt.submission.entity.Submission::getAwardedCredits)
+                    .sum();
+
+            collegePerformance.add(SystemAdminDto.CollegePerformanceDto.builder()
+                    .name(collegeName)
+                    .credits(creditsSum)
+                    .submissions((long) submissions.size())
+                    .students((long) students.size())
+                    .build());
+        }
+
         return SystemAdminDto.SystemStatsResponse.builder()
                 .totalColleges(totalColleges)
                 .activeColleges(activeColleges)
@@ -286,6 +404,10 @@ public class SystemAdminServiceImpl implements SystemAdminService {
                 .suspendedColleges(suspended)
                 .totalCollegeAdmins(totalAdmins)
                 .totalUsers(totalUsers)
+                .monthlyGrowth(monthlyGrowth)
+                .submissionAnalytics(submissionAnalytics)
+                .collegeActivity(collegeActivity)
+                .collegePerformance(collegePerformance)
                 .build();
     }
 }

@@ -158,32 +158,111 @@ export const CollegeAdminDashboard = () => {
     showToast('Dashboard refreshed!', 'success');
   }, [loadData, showToast]);
 
-  const handleDownloadReport = () => {
+  const handleDownloadReport = async () => {
     if (!user) return;
     const collegeName = user.college || 'Institution';
+
+    // Fetch logo and convert to base64 data URI so it works in blank popup windows
+    let logoDataUri = '';
+    try {
+      const resp = await fetch(`${window.location.origin}/spat-logo1.png`);
+      if (resp.ok) {
+        const blob = await resp.blob();
+        logoDataUri = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.readAsDataURL(blob);
+        });
+      }
+    } catch (_) { /* logo not critical — fallback to text */ }
+
     const printWindow = window.open('', '_blank');
     if (!printWindow) { showToast('Popup blocked! Please allow popups.', 'error'); return; }
 
-    printWindow.document.write(`<html><head><title>${collegeName} - SPAT Report</title>
-      <style>body{font-family:sans-serif;padding:40px;color:#1e293b}
-      .logo{font-size:28px;font-weight:900;color:#ea580c}
-      h2{color:#ea580c}table{width:100%;border-collapse:collapse;font-size:13px}
-      th{background:#f1f5f9;padding:10px;border-bottom:2px solid #cbd5e1}
-      td{padding:10px;border-bottom:1px solid #e2e8f0}</style></head><body>
-      <div class="logo">SPAT</div>
-      <h2>College Dashboard Report — ${collegeName}</h2>
-      <p>Generated: ${new Date().toLocaleString()}</p>
-      <h3>Summary</h3>
-      <table><tr><th>Metric</th><th>Value</th></tr>
-      <tr><td>Total Departments</td><td>${stats.totalDepartments}</td></tr>
-      <tr><td>Total Users</td><td>${stats.totalUsers}</td></tr>
-      <tr><td>Active Users</td><td>${stats.activeUsers}</td></tr>
-      <tr><td>Total Approvals</td><td>${stats.totalApprovals}</td></tr>
-      <tr><td>Student Activities</td><td>${stats.studentActivities}</td></tr></table>
-      <script>window.onload=()=>setTimeout(()=>window.print(),400)</script>
-      </body></html>`);
+    const logoHtml = logoDataUri
+      ? `<img src="${logoDataUri}" style="width:40px;height:40px;object-fit:contain;border-radius:10px;" />`
+      : '';
+
+    printWindow.document.write(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>${collegeName} — SPAT Report</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; padding: 48px; color: #1e293b; background: #fff; }
+
+    /* Header */
+    .header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 18px; border-bottom: 3px solid #ea580c; margin-bottom: 32px; }
+    .logo-block { display: flex; align-items: center; gap: 12px; }
+    .logo-text { font-size: 28px; font-weight: 900; color: #ea580c; letter-spacing: -0.5px; }
+    .college-block { text-align: right; }
+    .college-name { font-size: 13px; font-weight: 700; color: #7c2d12; text-transform: uppercase; letter-spacing: 0.6px; }
+    .generated { font-size: 11px; color: #94a3b8; margin-top: 4px; }
+
+    /* Title */
+    .report-title { font-size: 22px; font-weight: 800; color: #ea580c; margin-bottom: 4px; }
+    .report-subtitle { font-size: 14px; color: #64748b; margin-bottom: 32px; }
+
+    /* Table */
+    h3 { font-size: 15px; font-weight: 700; color: #7c2d12; margin-bottom: 12px; border-left: 4px solid #ea580c; padding-left: 10px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 32px; }
+    thead th { background: #fff7ed; color: #7c2d12; font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; padding: 12px 14px; border-bottom: 2px solid #fed7aa; text-align: left; }
+    tbody td { padding: 11px 14px; border-bottom: 1px solid #fef3c7; color: #1e293b; }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover { background: #fff7ed; }
+    td.metric { font-weight: 600; color: #44170a; }
+    td.value { font-weight: 800; color: #ea580c; font-size: 15px; }
+
+    /* Footer */
+    .footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; font-size: 11px; color: #94a3b8; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="logo-block">
+      ${logoHtml}
+      <span class="logo-text">SPAT</span>
+    </div>
+    <div class="college-block">
+      <div class="college-name">${collegeName}</div>
+      <div class="generated">Generated: ${new Date().toLocaleString()}</div>
+    </div>
+  </div>
+
+  <div class="report-title">College Dashboard Report</div>
+  <div class="report-subtitle">${collegeName} — Student Activity Point Tracker</div>
+
+  <h3>Summary</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Metric</th>
+        <th>Value</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td class="metric">Total Departments</td><td class="value">${stats.totalDepartments}</td></tr>
+      <tr><td class="metric">Total Users</td><td class="value">${stats.totalUsers}</td></tr>
+      <tr><td class="metric">Active Users</td><td class="value">${stats.activeUsers}</td></tr>
+      <tr><td class="metric">Inactive Users</td><td class="value">${stats.inactiveUsers ?? (stats.totalUsers - stats.activeUsers)}</td></tr>
+      <tr><td class="metric">Total Approvals</td><td class="value">${stats.totalApprovals}</td></tr>
+      <tr><td class="metric">Student Activities</td><td class="value">${stats.studentActivities}</td></tr>
+    </tbody>
+  </table>
+
+  <div class="footer">
+    <span>SPAT — Student Activity Point Tracker</span>
+    <span>© ${new Date().getFullYear()} ${collegeName}</span>
+  </div>
+
+  <script>window.onload = () => setTimeout(() => window.print(), 500);</script>
+</body>
+</html>`);
     printWindow.document.close();
   };
+
 
   return (
     <div className="animate-fade-in space-y-8 pb-10">

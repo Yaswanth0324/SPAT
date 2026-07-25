@@ -66,8 +66,22 @@ export const HODDashboard = () => {
   }));
 
   // ── PDF Report Generator ─────────────────────────────────────────────
-  const handleDownloadPDF = () => {
+  const handleDownloadPDF = async () => {
     showToast('Generating department placement report PDF... ✓', 'success');
+
+    // Fetch logo and convert to base64 data URI so it works in blank popup windows
+    let logoDataUri = '';
+    try {
+      const resp = await fetch(`${window.location.origin}/spat-logo2.png`);
+      if (resp.ok) {
+        const blob = await resp.blob();
+        logoDataUri = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.readAsDataURL(blob);
+        });
+      }
+    } catch (_) { /* logo not critical */ }
 
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
@@ -210,7 +224,7 @@ export const HODDashboard = () => {
         <body>
           <div class="header">
             <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 15px;">
-              <img src="/spat-logo2.png" style="width: 32px; height: 32px; object-fit: contain; border-radius: 8px;" />
+              ${logoDataUri ? `<img src="${logoDataUri}" style="width: 32px; height: 32px; object-fit: contain; border-radius: 8px;" />` : ''}
               <span style="font-size: 26px; font-weight: 900; color: #ea580c; font-family: 'Outfit', sans-serif; letter-spacing: -0.5px;">SPAT</span>
             </div>
             <h1 class="title">${user.college}</h1>

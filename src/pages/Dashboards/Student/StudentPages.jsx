@@ -6,7 +6,7 @@ import { addSubmission, getSubmissionsByStudent, addLog, getLogsByStudent, getTo
 import { ACTIVITY_TYPES, ACTIVITY_CATEGORIES, CREDIT_MAP, getStars, getAchievementBadge } from '../../../utils/mockData';
 import { StatCard, Badge, useToast, EmptyState, Avatar, StarsDisplay } from '../../../components/ui/UIComponents';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
-import { apiUpdateProfile, apiGetMentors } from '../../../utils/api';
+import { apiUpdateProfile, apiGetMentors, studentApi } from '../../../utils/api';
 
 // ---- Submission Form ----
 export const StudentSubmission = () => {
@@ -25,35 +25,57 @@ export const StudentSubmission = () => {
     date: resubmit?.date || '',
     description: resubmit?.description || '',
     certificate: resubmit?.certificateFile || '',
+    certificateFileObj: null,
     presentationFile: resubmit?.presentationFile || '',
+    presentationFileObj: null,
     documentFile: resubmit?.documentFile || '',
+    documentFileObj: null,
     customCategory: '',
     customAchievementType: '',
     customPoints: 15,
   });
 
-  const [customCats, setCustomCats] = useState(() => getCustomCategories());
+  const [categoriesMap, setCategoriesMap] = useState({});
   const [loading, setLoading] = useState(false);
 
-  const allCategories = { ...ACTIVITY_CATEGORIES, ...customCats };
-  const allTypes = [...ACTIVITY_TYPES, ...Object.keys(customCats).filter(t => !ACTIVITY_TYPES.includes(t))];
+  useEffect(() => {
+    studentApi.getCategories()
+      .then(map => {
+        if (map) setCategoriesMap(map);
+      })
+      .catch(err => {
+        console.error("Failed to load categories:", err);
+      });
+  }, []);
 
+  const allTypes = Object.keys(categoriesMap);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   // Sub-types for chosen category
-  const subTypes = form.type && form.type !== 'Other' ? (allCategories[form.type] || []) : [];
+  const subTypes = form.type && form.type !== 'Other' ? (categoriesMap[form.type] || []) : [];
 
   // Exact points for chosen achievement type
   const exactPoints = form.type === 'Other'
     ? Number(form.customPoints)
     : (subTypes.find(s => s.label === form.achievementType)?.points ?? null);
 
-  const handleSubmit = (e) => {
+  const fileToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = error => reject(error);
+    });
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     let finalCategory = form.type;
     let finalAchievementType = form.achievementType;
     let finalPoints = exactPoints;
+    let categoryId = null;
+    let subTypeId = null;
 
     if (form.type === 'Other') {
       if (!form.customCategory.trim()) {
@@ -67,15 +89,15 @@ export const StudentSubmission = () => {
       finalCategory = form.customCategory.trim();
       finalAchievementType = form.customAchievementType.trim();
       finalPoints = Number(form.customPoints) || 15;
-
-      // Add to persistent custom categories in system database
-      addCustomCategory(finalCategory, finalAchievementType, finalPoints);
-      // Reload state so it refreshes instantly
-      setCustomCats(getCustomCategories());
     } else {
       if (!form.achievementType) {
         showToast('Please select an achievement type', 'warning');
         return;
+      }
+      const matchingSub = subTypes.find(s => s.label === form.achievementType);
+      if (matchingSub) {
+        categoryId = matchingSub.categoryId;
+        subTypeId = matchingSub.id;
       }
     }
 
@@ -87,34 +109,54 @@ export const StudentSubmission = () => {
 
     setLoading(true);
 
-    const validDocs = [];
-    if (form.certificate) validDocs.push({ name: form.certificate, type: 'certificate' });
-    if (form.presentationFile) validDocs.push({ name: form.presentationFile, type: 'presentation' });
-    if (form.documentFile) validDocs.push({ name: form.documentFile, type: 'document' });
+    try {
+      let certificateBase64 = null;
+      let presentationBase64 = null;
+      let documentBase64 = null;
 
-    setTimeout(() => {
-      addSubmission({
-        id: generateId('sub'),
-        studentId: user.id,
-        studentName: user.name,
-        mentorId: user.mentorId || '',
-        title: form.title,
-        type: finalCategory,
+      if (form.certificateFileObj) {
+        certificateBase64 = await fileToBase64(form.certificateFileObj);
+      }
+      if (form.presentationFileObj) {
+        presentationBase64 = await fileToBase64(form.presentationFileObj);
+      }
+      if (form.documentFileObj) {
+        documentBase64 = await fileToBase64(form.documentFileObj);
+      }
+
+      // If "Other" (custom category/sub-type) is selected, create it first in backend
+      if (form.type === 'Other') {
+        const customRes = await studentApi.createCustomCategory({
+          categoryName: finalCategory,
+          achievementType: finalAchievementType,
+          suggestedPoints: finalPoints
+        });
+        categoryId = customRes.categoryId;
+        subTypeId = customRes.subTypeId;
+        
+        // Reload backend categories map
+        const updatedCats = await studentApi.getCategories();
+        if (updatedCats) setCategoriesMap(updatedCats);
+      }
+
+      // Submit activity points request to backend
+      await studentApi.createSubmission({
+        categoryId,
+        subTypeId,
+        categoryName: finalCategory,
         achievementType: finalAchievementType,
-        suggestedCredits: finalPoints,
-        date: form.date,
+        title: form.title,
         description: form.description,
-        status: 'pending',
-        credits: 0,
-        review: '',
-        fileUrl: form.certificate ? '#' : null,
-        presentationUrl: form.presentationFile ? '#' : null,
-        documentUrl: form.documentFile ? '#' : null,
-        certificateFile: form.certificate || null,
-        presentationFile: form.presentationFile || null,
-        documentFile: form.documentFile || null,
-        allDocuments: validDocs,
-        submittedAt: new Date().toISOString().split('T')[0],
+        activityDate: form.date,
+        suggestedCredits: finalPoints,
+        certificateFileName: form.certificate || null,
+        certificateBase64,
+        presentationFileName: form.presentationFile || null,
+        presentationBase64,
+        documentFileName: form.documentFile || null,
+        documentBase64,
+        isResubmission: !!resubmit,
+        parentSubmissionId: resubmit?.id || null
       });
 
       showToast(resubmit ? 'Correction submission uploaded!' : 'Submission uploaded! Waiting for mentor review.', 'success');
@@ -127,19 +169,25 @@ export const StudentSubmission = () => {
         date: '',
         description: '',
         certificate: '',
+        certificateFileObj: null,
         presentationFile: '',
+        presentationFileObj: null,
         documentFile: '',
+        documentFileObj: null,
         customCategory: '',
         customAchievementType: '',
         customPoints: 15,
       });
-      setLoading(false);
 
       // If we resubmitted, clear history state
       if (resubmit) {
         navigate('/dashboard/student/submission', { replace: true, state: null });
       }
-    }, 800);
+    } catch (err) {
+      showToast(err.message || 'Failed to submit activity', 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -147,140 +195,83 @@ export const StudentSubmission = () => {
       {ToastComponent}
       <div className="mb-8">
         <h1 className="font-display text-3xl font-bold text-slate-900 dark:text-white">
-          {resubmit ? 'Re-Submit Correction' : 'Upload Submission'}
+          {resubmit ? 'Correct Activity Submission' : 'Upload Submission'}
         </h1>
         <p className="text-slate-500 dark:text-slate-400 mt-1">
-          {resubmit ? 'Make necessary corrections as requested by your mentor' : 'Submit your activities for mentor review and credits'}
+          {resubmit ? 'Submit corrections for your rejected activity' : 'Submit activity details for credits'}
         </p>
       </div>
 
-      {resubmit && (
-        <div className="mb-6 p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-xl">
-          <p className="text-sm font-bold text-red-600 dark:text-red-400">Mentor Feedback Rejection Review:</p>
-          <p className="text-sm text-red-500 dark:text-red-300 mt-1 italic">"{resubmit.review}"</p>
-        </div>
-      )}
-
       <div className="card">
-        <form onSubmit={handleSubmit} className="space-y-5">
-
-          {/* ---- Activity Category ---- */}
-          <div>
-            <label className="label-field">Activity Category</label>
-            <select
-              className="select-field"
-              value={form.type}
-              onChange={e => { set('type', e.target.value); set('achievementType', ''); }}
-              required
-            >
-              <option value="">Select a category</option>
-              {allTypes.map(t => <option key={t}>{t}</option>)}
-              <option value="Other">Other (Add New Category)</option>
-            </select>
-          </div>
-
-          {/* ---- Custom Category fields if "Other" selected ---- */}
-          {form.type === 'Other' && (
-            <div className="p-4 bg-orange-50 dark:bg-orange-950/10 border border-orange-200 dark:border-orange-900/40 rounded-xl space-y-4 animate-fade-in">
-              <h4 className="text-sm font-bold text-orange-600 dark:text-orange-400 flex items-center gap-1.5">
-                <span>➕</span> Create New Custom Activity Category
-              </h4>
-              <div>
-                <label className="label-field text-xs">New Category Name</label>
-                <input
-                  className="input-field"
-                  placeholder="e.g. Cybersecurity Certifications"
-                  value={form.customCategory}
-                  onChange={e => set('customCategory', e.target.value)}
-                  required
-                />
-              </div>
-              <div>
-                <label className="label-field text-xs">Achievement / Milestone / Level Name</label>
-                <input
-                  className="input-field"
-                  placeholder="e.g. CEH Certified Professional"
-                  value={form.customAchievementType}
-                  onChange={e => set('customAchievementType', e.target.value)}
-                  required
-                />
-              </div>
-              <div>
-                <label className="label-field text-xs">Suggested Credits / Points</label>
-                <input
-                  type="number"
-                  min="1"
-                  max="200"
-                  className="input-field"
-                  value={form.customPoints}
-                  onChange={e => set('customPoints', e.target.value)}
-                  required
-                />
-              </div>
-            </div>
-          )}
-
-          {/* ---- Achievement / Activity Type ---- */}
-          {form.type && form.type !== 'Other' && (
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            {/* Category */}
             <div>
-              <label className="label-field">Achievement / Activity Type</label>
-              <select
-                className="select-field"
-                value={form.achievementType}
-                onChange={e => set('achievementType', e.target.value)}
-                required
-              >
-                <option value="">Select achievement type</option>
-                {subTypes.map(s => (
-                  <option key={s.label} value={s.label}>
-                    {s.label} — {s.points} pts
-                  </option>
-                ))}
+              <label className="label-field text-xs">Activity Category</label>
+              <select className="select-field" value={form.type} onChange={e => {
+                setForm(f => ({ ...f, type: e.target.value, achievementType: '', customCategory: '', customAchievementType: '' }));
+              }} required>
+                <option value="">Select Category</option>
+                {allTypes.map(t => <option key={t} value={t}>{t}</option>)}
+                <option value="Other">Other (Custom Category)</option>
               </select>
             </div>
+
+            {/* Achievement Type (only show if not Other) */}
+            {form.type && form.type !== 'Other' && (
+              <div>
+                <label className="label-field text-xs">Achievement / Level</label>
+                <select className="select-field" value={form.achievementType} onChange={e => set('achievementType', e.target.value)} required>
+                  <option value="">Select Achievement / Level</option>
+                  {subTypes.map(s => (
+                    <option key={s.id} value={s.label}>
+                      {s.label} ({s.points} pts)
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+
+          {/* Custom Category Fields */}
+          {form.type === 'Other' && (
+            <div className="p-4 bg-slate-50 dark:bg-dark-900 rounded-2xl border border-slate-200 dark:border-dark-750 grid grid-cols-1 sm:grid-cols-3 gap-4 animate-fadeIn">
+              <div>
+                <label className="label-field text-xs text-primary-600 dark:text-primary-400">Custom Category Name</label>
+                <input className="input-field" placeholder="e.g. Community Service" value={form.customCategory} onChange={e => set('customCategory', e.target.value)} required />
+              </div>
+              <div>
+                <label className="label-field text-xs text-primary-600 dark:text-primary-400">Custom Level / Label</label>
+                <input className="input-field" placeholder="e.g. Coordinator" value={form.customAchievementType} onChange={e => set('customAchievementType', e.target.value)} required />
+              </div>
+              <div>
+                <label className="label-field text-xs text-primary-600 dark:text-primary-400">Suggested Credits</label>
+                <input type="number" className="input-field" value={form.customPoints} onChange={e => set('customPoints', e.target.value)} min={1} required />
+              </div>
+            </div>
           )}
 
-          {/* ---- Title ---- */}
+          {/* Activity Title */}
           <div>
-            <label className="label-field">Activity Title</label>
-            <input
-              className="input-field"
-              placeholder="e.g. First Prize – Smart India Hackathon 2024"
-              value={form.title}
-              onChange={e => set('title', e.target.value)}
-              required
-            />
+            <label className="label-field text-xs">Activity Title</label>
+            <input className="input-field" placeholder="e.g. Smart India Hackathon 2024" value={form.title} onChange={e => set('title', e.target.value)} required />
           </div>
 
-          {/* ---- Date ---- */}
+          {/* Activity Date */}
           <div>
-            <label className="label-field">Activity Date</label>
-            <input
-              type="date"
-              className="input-field"
-              value={form.date}
-              onChange={e => set('date', e.target.value)}
-              required
-              max={new Date().toISOString().split('T')[0]}
-            />
+            <label className="label-field text-xs">Activity Date</label>
+            <input type="date" className="input-field" value={form.date} onChange={e => set('date', e.target.value)} required />
           </div>
 
-          {/* ---- Description ---- */}
+          {/* Description */}
           <div>
-            <label className="label-field">Description</label>
-            <textarea
-              className="input-field h-32 resize-none"
-              placeholder="Describe your activity, achievements, and impact..."
-              value={form.description}
-              onChange={e => set('description', e.target.value)}
-              required
-            />
+            <label className="label-field text-xs">Description</label>
+            <textarea className="input-field h-28 resize-none" placeholder="Provide details about your role, achievements, or topics covered..." value={form.description} onChange={e => set('description', e.target.value)} required />
           </div>
 
-          {/* ---- File Uploads ---- */}
-          <div className="space-y-3 pt-1">
-            <p className="text-sm font-semibold text-slate-700 dark:text-slate-350 flex items-center gap-2">
-              <UploadCloud className="w-4 h-4 text-primary-500" />
+          {/* Supporting Documents Section */}
+          <div className="p-5 bg-slate-50 dark:bg-dark-900 rounded-2xl border border-slate-200 dark:border-dark-750 space-y-4">
+            <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
               Supporting Documents <span className="font-normal text-slate-400 dark:text-slate-500">(at least one required)</span>
             </p>
 
@@ -299,7 +290,10 @@ export const StudentSubmission = () => {
                   type="file"
                   accept=".pdf,.jpg,.jpeg,.png,.webp"
                   className="hidden"
-                  onChange={e => set('certificate', e.target.files[0]?.name || '')}
+                  onChange={e => {
+                    const file = e.target.files[0];
+                    setForm(f => ({ ...f, certificate: file ? file.name : '', certificateFileObj: file || null }));
+                  }}
                 />
               </label>
             </div>
@@ -321,7 +315,10 @@ export const StudentSubmission = () => {
                   type="file"
                   accept=".ppt,.pptx,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation"
                   className="hidden"
-                  onChange={e => set('presentationFile', e.target.files[0]?.name || '')}
+                  onChange={e => {
+                    const file = e.target.files[0];
+                    setForm(f => ({ ...f, presentationFile: file ? file.name : '', presentationFileObj: file || null }));
+                  }}
                 />
               </label>
             </div>
@@ -343,7 +340,10 @@ export const StudentSubmission = () => {
                   type="file"
                   accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
                   className="hidden"
-                  onChange={e => set('documentFile', e.target.files[0]?.name || '')}
+                  onChange={e => {
+                    const file = e.target.files[0];
+                    setForm(f => ({ ...f, documentFile: file ? file.name : '', documentFileObj: file || null }));
+                  }}
                 />
               </label>
             </div>
@@ -362,22 +362,60 @@ export const StudentSubmission = () => {
 export const StudentLogs = () => {
   const { user } = useAuth();
   const { showToast, ToastComponent } = useToast();
-  const [logs, setLogs] = useState(() => getLogsByStudent(user.id));
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [logs, setLogs] = useState([]);
   const [form, setForm] = useState({ title: '', description: '', links: '' });
   const [loading, setLoading] = useState(false);
+  const [correctingLogId, setCorrectingLogId] = useState(null);
   const today = new Date().toISOString().split('T')[0];
 
-  const handleAdd = (e) => {
+  useEffect(() => {
+    studentApi.getLogs()
+      .then(list => {
+        if (list) {
+          setLogs(list);
+          if (location.state?.resubmitLog) {
+            const rl = location.state.resubmitLog;
+            setCorrectingLogId(rl.id);
+            setForm({ title: rl.title, description: rl.description, links: rl.links || '' });
+            navigate(location.pathname, { replace: true, state: {} });
+          }
+        }
+      })
+      .catch(err => {
+        console.error("Failed to load logs:", err);
+      });
+  }, [location.state]);
+
+  const handleAdd = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => {
-      const newLog = { id: generateId('log'), studentId: user.id, date: today, ...form };
-      addLog(newLog);
-      setLogs(getLogsByStudent(user.id));
-      showToast('Log added!', 'success');
+    try {
+      if (correctingLogId) {
+        const updatedLog = await studentApi.updateLog(correctingLogId, {
+          title: form.title,
+          description: form.description,
+          links: form.links
+        });
+        setLogs(prev => prev.map(l => l.id === correctingLogId ? updatedLog : l));
+        showToast('Log corrections saved and re-submitted!', 'success');
+        setCorrectingLogId(null);
+      } else {
+        const newLog = await studentApi.createLog({
+          title: form.title,
+          description: form.description,
+          links: form.links
+        });
+        setLogs(prev => [newLog, ...prev]);
+        showToast('Log added!', 'success');
+      }
       setForm({ title: '', description: '', links: '' });
+    } catch (err) {
+      showToast(err.message || 'Failed to submit log', 'error');
+    } finally {
       setLoading(false);
-    }, 500);
+    }
   };
 
   return (
@@ -390,7 +428,13 @@ export const StudentLogs = () => {
 
       {/* Add form */}
       <div className="card mb-8">
-        <h2 className="font-semibold text-slate-800 dark:text-white mb-4 flex items-center gap-2"><Plus className="w-4 h-4 text-primary-500" /> Add Today's Log</h2>
+        <h2 className="font-semibold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+          {correctingLogId ? (
+            <><Plus className="w-4 h-4 text-orange-500 animate-spin" /> Correct Log Entry</>
+          ) : (
+            <><Plus className="w-4 h-4 text-primary-500" /> Add Today's Log</>
+          )}
+        </h2>
         <form onSubmit={handleAdd} className="space-y-4">
           <div>
             <label className="label-field">Title</label>
@@ -408,9 +452,23 @@ export const StudentLogs = () => {
             <label className="label-field">Reference Links (optional)</label>
             <input className="input-field" placeholder="https://..." value={form.links} onChange={e => setForm(f => ({ ...f, links: e.target.value }))} />
           </div>
-          <button type="submit" className="btn-primary w-full justify-center" disabled={loading}>
-            {loading ? 'Adding...' : 'Add Log'}
-          </button>
+          <div className="flex gap-3">
+            <button type="submit" className="btn-primary flex-1 justify-center" disabled={loading}>
+              {loading ? 'Submitting...' : correctingLogId ? 'Save Corrections & Re-Submit' : 'Add Log'}
+            </button>
+            {correctingLogId && (
+              <button
+                type="button"
+                onClick={() => {
+                  setCorrectingLogId(null);
+                  setForm({ title: '', description: '', links: '' });
+                }}
+                className="btn-secondary px-4 justify-center"
+              >
+                Cancel Edit
+              </button>
+            )}
+          </div>
         </form>
       </div>
 
@@ -420,7 +478,21 @@ export const StudentLogs = () => {
           <h2 className="font-semibold text-slate-800 dark:text-white">Log History ({logs.length})</h2>
           {logs.length > 0 && (
             <button
-              onClick={() => {
+              onClick={async () => {
+                // Fetch logo and convert to base64 data URI so it works in blank popup windows
+                let logoDataUri = '';
+                try {
+                  const resp = await fetch(`${window.location.origin}/spat-logo1.png`);
+                  if (resp.ok) {
+                    const blob = await resp.blob();
+                    logoDataUri = await new Promise((resolve) => {
+                      const reader = new FileReader();
+                      reader.onloadend = () => resolve(reader.result);
+                      reader.readAsDataURL(blob);
+                    });
+                  }
+                } catch (_) { /* logo not critical */ }
+
                 const printWindow = window.open('', '_blank');
                 if (!printWindow) return;
                 const content = `
@@ -439,12 +511,16 @@ export const StudentLogs = () => {
                         .table th, .table td { border: 1px solid #fed7aa; padding: 12px; text-align: left; font-size: 13px; }
                         .table th { background: #fff7ed; color: #7c2d12; font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; }
                         .table td { color: #1c0f00; }
+                        .badge { display: inline-block; padding: 3px 8px; font-size: 11px; font-weight: 700; text-transform: uppercase; border-radius: 999px; text-align: center; }
+                        .badge-approved { background-color: #d1fae5; color: #065f46; }
+                        .badge-pending { background-color: #fef3c7; color: #92400e; }
+                        .badge-rejected { background-color: #fee2e2; color: #991b1b; }
                       </style>
                     </head>
                     <body>
                       <div class="header">
                         <div class="logo-container" style="display: flex; align-items: center; gap: 10px;">
-                          <img src="/spat-logo1.png" style="width: 32px; height: 32px; object-fit: contain; border-radius: 8px;" />
+                          ${logoDataUri ? `<img src="${logoDataUri}" style="width: 32px; height: 32px; object-fit: contain; border-radius: 8px;" />` : ''}
                           <span class="logo-text" style="font-size: 26px; font-weight: 900; color: #ea580c; font-family: 'Outfit', sans-serif; letter-spacing: -0.5px;">SPAT</span>
                         </div>
                         <div class="college-name">${user.college || 'SPAT Partner Institute'}</div>
@@ -459,21 +535,29 @@ export const StudentLogs = () => {
                       <table class="table">
                         <thead>
                           <tr>
-                            <th style="width: 120px;">Date</th>
-                            <th style="width: 200px;">Task Title</th>
+                            <th style="width: 100px;">Date</th>
+                            <th style="width: 150px;">Task Title</th>
                             <th>Detailed Description</th>
                             <th>Resource Links</th>
+                            <th style="width: 100px;">Status</th>
+                            <th style="width: 180px;">Mentor Review</th>
                           </tr>
                         </thead>
                         <tbody>
-                          ${logs.map(l => `
-                            <tr>
-                              <td>${l.date}</td>
-                              <td><strong>${l.title}</strong></td>
-                              <td>${l.description}</td>
-                              <td>${l.links ? `<a href="${l.links}" target="_blank" style="color: #ea580c; text-decoration: underline;">${l.links}</a>` : '–'}</td>
-                            </tr>
-                          `).join('')}
+                          ${logs.map(l => {
+                            const status = l.reviewStatus || 'pending';
+                            const badgeClass = status === 'approved' ? 'badge-approved' : status === 'rejected' ? 'badge-rejected' : 'badge-pending';
+                            return `
+                              <tr>
+                                <td>${l.date}</td>
+                                <td><strong>${l.title}</strong></td>
+                                <td>${l.description}</td>
+                                <td>${l.links ? `<a href="${l.links}" target="_blank" style="color: #ea580c; text-decoration: underline;">${l.links}</a>` : '–'}</td>
+                                <td><span class="badge ${badgeClass}">${status}</span></td>
+                                <td>${l.mentorRemark ? `<em>"${l.mentorRemark}"</em>` : '–'}</td>
+                              </tr>
+                            `;
+                          }).join('')}
                         </tbody>
                       </table>
                       <script>window.onload = function() { window.print(); }</script>
@@ -491,18 +575,68 @@ export const StudentLogs = () => {
         </div>
         {logs.length === 0 ? (
           <div className="card"><EmptyState icon={<BookOpen className="w-12 h-12" />} title="No logs yet" subtitle="Start adding your daily activities" /></div>
-        ) : logs.map(l => (
-          <div key={l.id} className="card border-l-4 border-primary-500">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="font-semibold text-slate-900 dark:text-white">{l.title}</p>
-                <p className="text-xs text-primary-600 dark:text-primary-400 mt-0.5">{l.date}</p>
+        ) : logs.map(l => {
+          const status = l.reviewStatus || 'pending';
+          const isApproved = status === 'approved';
+          const isRejected = status === 'rejected';
+          
+          return (
+            <div 
+              key={l.id} 
+              className={`card border-l-4 transition-all duration-300 ${
+                isApproved 
+                  ? 'border-l-emerald-500 border-emerald-100 dark:border-dark-800' 
+                  : isRejected 
+                    ? 'border-l-red-500 border-red-100 dark:border-dark-800' 
+                    : 'border-l-amber-500 border-slate-200 dark:border-dark-750'
+              }`}
+            >
+              <div className="flex items-start justify-between flex-wrap gap-2">
+                <div>
+                  <p className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                    {l.title}
+                  </p>
+                  <p className="text-xs text-slate-400 mt-0.5">{l.date}</p>
+                </div>
+                <Badge variant={isApproved ? 'green' : isRejected ? 'red' : 'yellow'}>
+                  {isApproved ? 'Approved' : isRejected ? 'Rejected' : 'Pending'}
+                </Badge>
               </div>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">{l.description}</p>
+              {l.links && <a href={l.links} target="_blank" rel="noreferrer" className="text-xs text-primary-500 hover:underline mt-1 block">{l.links}</a>}
+              
+              {/* Mentor Feedback */}
+              {l.mentorRemark && (
+                <div className="mt-3 p-3 bg-slate-50 dark:bg-dark-900 rounded-xl border border-slate-200 dark:border-dark-750 flex items-start gap-2.5">
+                  <span className="text-sm">👨‍🏫</span>
+                  <div className="flex-1">
+                    <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Mentor Feedback</p>
+                    <p className="text-xs text-slate-700 dark:text-slate-300 mt-0.5 italic">"{l.mentorRemark}"</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Resubmission Action for Rejected logs */}
+              {isRejected && (
+                <div className="mt-4 pt-3 border-t border-red-100 dark:border-red-950/35 flex items-center justify-between flex-wrap gap-3">
+                  <p className="text-xs text-red-500 dark:text-red-400 flex items-center gap-1">
+                    ⚠️ <strong>Action Required:</strong> Please edit this log to address mentor feedback.
+                  </p>
+                  <button
+                    onClick={() => {
+                      setCorrectingLogId(l.id);
+                      setForm({ title: l.title, description: l.description, links: l.links || '' });
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                    className="btn-primary py-1.5 px-3 text-xs font-bold bg-red-600 hover:bg-red-700 text-white"
+                  >
+                    🔄 Edit & Re-Submit
+                  </button>
+                </div>
+              )}
             </div>
-            <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">{l.description}</p>
-            {l.links && <a href={l.links} target="_blank" rel="noreferrer" className="text-xs text-primary-500 hover:underline mt-1 block">{l.links}</a>}
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -512,10 +646,34 @@ export const StudentLogs = () => {
 export const StudentMetrics = () => {
   const { user } = useAuth();
   const { showToast, ToastComponent } = useToast();
-  const submissions = getSubmissionsByStudent(user.id);
-  const totalCredits = getTotalCredits(user.id);
-  const stars = getStars(totalCredits);
-  const badge = getAchievementBadge(stars);
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    studentApi.getDashboardStats()
+      .then(res => {
+        if (res) setStats(res);
+      })
+      .catch(err => {
+        console.error("Failed to load dashboard metrics:", err);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
+      </div>
+    );
+  }
+
+  if (!stats) {
+    return <div className="card text-center p-8">No metrics available</div>;
+  }
+
+  const { submissions, totalCredits, totalApproved, totalRejected, totalPending, stars, badge, growthData } = stats;
+
   const approved = submissions.filter(s => s.status === 'approved');
   const rejected = submissions.filter(s => s.status === 'rejected');
   const pending = submissions.filter(s => s.status === 'pending');
@@ -526,14 +684,6 @@ export const StudentMetrics = () => {
     { name: 'Rejected', value: rejected.length, color: '#ef4444' },
     { name: 'Pending', value: pending.length, color: '#f59e0b' },
   ].filter(d => d.value > 0);
-
-  // Credit growth chart
-  const sortedApproved = [...approved].sort((a, b) => new Date(a.submittedAt) - new Date(b.submittedAt));
-  let cumulative = 0;
-  const growthData = sortedApproved.map(s => {
-    cumulative += s.credits;
-    return { date: s.submittedAt?.slice(0, 7) || s.date?.slice(0, 7), credits: cumulative };
-  });
 
   return (
     <div className="animate-fade-in">
@@ -611,7 +761,21 @@ export const StudentMetrics = () => {
         <div className="px-6 py-4 border-b border-slate-100 dark:border-dark-700 flex items-center justify-between">
           <h3 className="font-semibold text-slate-800 dark:text-white">All Submissions</h3>
           <button
-            onClick={() => {
+            onClick={async () => {
+              // Fetch logo and convert to base64 data URI so it works in blank popup windows
+              let logoDataUri = '';
+              try {
+                const resp = await fetch(`${window.location.origin}/spat-logo1.png`);
+                if (resp.ok) {
+                  const blob = await resp.blob();
+                  logoDataUri = await new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result);
+                    reader.readAsDataURL(blob);
+                  });
+                }
+              } catch (_) { /* logo not critical */ }
+
               const printWindow = window.open('', '_blank');
               if (!printWindow) return;
               const content = `
@@ -639,7 +803,7 @@ export const StudentMetrics = () => {
                   <body>
                     <div class="header">
                       <div class="logo-container" style="display: flex; align-items: center; gap: 10px;">
-                        <img src="/spat-logo1.png" style="width: 32px; height: 32px; object-fit: contain; border-radius: 8px;" />
+                        ${logoDataUri ? `<img src="${logoDataUri}" style="width: 32px; height: 32px; object-fit: contain; border-radius: 8px;" />` : ''}
                         <span class="logo-text" style="font-size: 26px; font-weight: 900; color: #ea580c; font-family: 'Outfit', sans-serif; letter-spacing: -0.5px;">SPAT</span>
                       </div>
                       <div class="college-name">${user.college || 'SPAT Partner Institute'}</div>
@@ -660,6 +824,7 @@ export const StudentMetrics = () => {
                           <th>Achievement Type</th>
                           <th>Status</th>
                           <th>Credits</th>
+                          <th style="width: 180px;">Mentor Review</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -672,10 +837,11 @@ export const StudentMetrics = () => {
                               <td>${s.achievementType || '–'}</td>
                               <td><span class="badge ${badgeClass}">${s.status}</span></td>
                               <td style="font-weight: bold; color: #ea580c;">${s.credits || (s.suggestedCredits ? `~${s.suggestedCredits}` : '–')}</td>
+                              <td>${s.review ? `<em>"${s.review}"</em>` : '–'}</td>
                             </tr>
                           `;
                         }).join('')}
-                        ${submissions.length === 0 ? '<tr><td colspan="5" style="text-align: center;">No submissions uploaded yet.</td></tr>' : ''}
+                        ${submissions.length === 0 ? '<tr><td colspan="6" style="text-align: center;">No submissions uploaded yet.</td></tr>' : ''}
                       </tbody>
                     </table>
                     <script>window.onload = function() { window.print(); }</script>
@@ -726,7 +892,7 @@ export const StudentProfile = () => {
   const { showToast, ToastComponent } = useToast();
   const [editMode, setEditMode] = useState(false);
   const [editPass, setEditPass] = useState(false);
-  const [password, setPassword] = useState({ new: '', confirm: '' });
+  const [password, setPassword] = useState({ current: '', new: '', confirm: '' });
   const [avatar, setAvatar] = useState(user?.avatar || null);
 
   const [editForm, setEditForm] = useState({
@@ -740,9 +906,23 @@ export const StudentProfile = () => {
     mentorName: user?.mentorName || '',
   });
 
-  const totalCredits = getTotalCredits(user.id);
-  const stars = getStars(totalCredits);
-  const badge = getAchievementBadge(stars);
+  const [totalCredits, setTotalCredits] = useState(0);
+  const [stars, setStars] = useState(0);
+  const [badge, setBadge] = useState('Beginner');
+
+  useEffect(() => {
+    studentApi.getDashboardStats()
+      .then(res => {
+        if (res) {
+          setTotalCredits(res.totalCredits);
+          setStars(res.stars);
+          setBadge(res.badge);
+        }
+      })
+      .catch(err => {
+        console.error("Failed to load profile metrics:", err);
+      });
+  }, []);
 
   const [allMentors, setAllMentors] = useState([]);
 
@@ -795,6 +975,7 @@ export const StudentProfile = () => {
         phone: editForm.phone,
         mentorId: editForm.mentorId,
         mentorName: editForm.mentorName,
+        rollNo: editForm.rollNo,
       });
 
       login(res.user);
@@ -806,14 +987,18 @@ export const StudentProfile = () => {
   };
 
   const handlePasswordChange = async () => {
+    if (!password.current) { showToast('Current password is required', 'error'); return; }
     if (password.new.length < 6) { showToast('Password min 6 chars', 'error'); return; }
     if (password.new !== password.confirm) { showToast('Passwords do not match', 'error'); return; }
     try {
-      const res = await apiUpdateProfile(user.id, { password: password.new });
+      const res = await apiUpdateProfile(user.id, {
+        currentPassword: password.current,
+        password: password.new
+      });
       login(res.user);
       showToast('Password updated!', 'success');
       setEditPass(false);
-      setPassword({ new: '', confirm: '' });
+      setPassword({ current: '', new: '', confirm: '' });
     } catch (err) {
       showToast(err.message || 'Failed to update password', 'error');
     }
@@ -1003,11 +1188,15 @@ export const StudentProfile = () => {
         {editPass && (
           <div className="space-y-3">
             <div>
-              <label className="label-field">New Password</label>
+              <label className="label-field text-xs">Current Password</label>
+              <input type="password" className="input-field" placeholder="Enter current password" value={password.current} onChange={e => setPassword(p => ({ ...p, current: e.target.value }))} />
+            </div>
+            <div>
+              <label className="label-field text-xs">New Password</label>
               <input type="password" className="input-field" placeholder="Min 6 characters" value={password.new} onChange={e => setPassword(p => ({ ...p, new: e.target.value }))} />
             </div>
             <div>
-              <label className="label-field">Confirm Password</label>
+              <label className="label-field text-xs">Confirm Password</label>
               <input type="password" className="input-field" placeholder="Repeat password" value={password.confirm} onChange={e => setPassword(p => ({ ...p, confirm: e.target.value }))} />
             </div>
             <button onClick={handlePasswordChange} className="btn-primary">Update Password</button>
@@ -1023,11 +1212,41 @@ export const StudentProfile = () => {
 export const StudentReviews = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const submissions = getSubmissionsByStudent(user.id);
-  const reviewedSubmissions = submissions.filter(s => s.status !== 'pending' || s.review);
+  const [submissions, setSubmissions] = useState([]);
+  const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('submissions'); // 'submissions' | 'logs'
 
-  const approved = reviewedSubmissions.filter(s => s.status === 'approved');
-  const rejected = reviewedSubmissions.filter(s => s.status === 'rejected');
+  useEffect(() => {
+    studentApi.getDashboardStats()
+      .then(res => {
+        if (res) {
+          if (res.submissions) setSubmissions(res.submissions);
+          if (res.logs) setLogs(res.logs);
+        }
+      })
+      .catch(err => {
+        console.error("Failed to load reviewed submissions/logs:", err);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
+      </div>
+    );
+  }
+
+  const reviewedSubmissions = submissions.filter(s => s.status !== 'pending' || s.review);
+  const reviewedLogs = logs.filter(l => l.reviewStatus !== 'pending' || l.mentorRemark);
+
+  const approvedSubs = reviewedSubmissions.filter(s => s.status === 'approved');
+  const rejectedSubs = reviewedSubmissions.filter(s => s.status === 'rejected');
+
+  const approvedLogs = reviewedLogs.filter(l => l.reviewStatus === 'approved');
+  const rejectedLogs = reviewedLogs.filter(l => l.reviewStatus === 'rejected');
 
   return (
     <div className="animate-fade-in">
@@ -1038,91 +1257,204 @@ export const StudentReviews = () => {
         </p>
       </div>
 
-      {/* Review Metrics */}
-      <div className="grid sm:grid-cols-3 gap-6 mb-8">
-        <StatCard icon={<FileText className="w-6 h-6" />} label="Reviewed Activities" value={reviewedSubmissions.length} color="primary" />
-        <StatCard icon={<CheckCircle className="w-6 h-6" />} label="Approved" value={approved.length} color="green" />
-        <StatCard icon={<XCircle className="w-6 h-6" />} label="Rejected / Action Required" value={rejected.length} color="red" />
+      {/* Tabs */}
+      <div className="flex border-b border-slate-200 dark:border-dark-750 gap-4 mb-6">
+        <button
+          onClick={() => setActiveTab('submissions')}
+          className={`pb-3 text-sm font-semibold border-b-2 transition-all duration-300 ${
+            activeTab === 'submissions'
+              ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+              : 'border-transparent text-slate-400 dark:text-slate-500 hover:text-slate-600'
+          }`}
+        >
+          Submissions Feedback ({reviewedSubmissions.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('logs')}
+          className={`pb-3 text-sm font-semibold border-b-2 transition-all duration-300 ${
+            activeTab === 'logs'
+              ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+              : 'border-transparent text-slate-400 dark:text-slate-500 hover:text-slate-600'
+          }`}
+        >
+          Daily Logs Feedback ({reviewedLogs.length})
+        </button>
       </div>
 
-      <div className="space-y-6">
-        {reviewedSubmissions.length === 0 ? (
-          <div className="card">
-            <EmptyState
-              icon={<BookOpen className="w-12 h-12 text-slate-355" />}
-              title="No Reviews Yet"
-              subtitle="Your mentor hasn't reviewed any of your submissions or daily logs yet. Once reviewed, feedback will appear here."
-            />
+      {activeTab === 'submissions' ? (
+        <div className="space-y-6 animate-fade-in">
+          {/* Review Metrics */}
+          <div className="grid sm:grid-cols-3 gap-6">
+            <StatCard icon={<FileText className="w-6 h-6" />} label="Reviewed Activities" value={reviewedSubmissions.length} color="primary" />
+            <StatCard icon={<CheckCircle className="w-6 h-6" />} label="Approved" value={approvedSubs.length} color="green" />
+            <StatCard icon={<XCircle className="w-6 h-6" />} label="Rejected / Action Required" value={rejectedSubs.length} color="red" />
           </div>
-        ) : (
-          reviewedSubmissions.map(s => {
-            const isRejected = s.status === 'rejected';
-            return (
-              <div
-                key={s.id}
-                className={`card border-l-4 transition-all duration-300 ${
-                  isRejected 
-                    ? 'border-l-red-500 bg-red-50/10 dark:bg-red-950/5 border-red-100 dark:border-dark-800' 
-                    : 'border-l-emerald-500 bg-emerald-50/10 dark:bg-emerald-950/5 border-emerald-100 dark:border-dark-800'
-                }`}
-              >
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs font-mono text-slate-400 dark:text-slate-500">{s.submittedAt || s.date}</span>
-                      <span className="text-slate-300 dark:text-slate-700">•</span>
-                      <Badge variant="blue">{s.type}</Badge>
-                      <span className="text-slate-300 dark:text-slate-700">•</span>
-                      <Badge variant={isRejected ? 'red' : 'green'}>
-                        {isRejected ? 'Rejected (Requires Correction)' : 'Approved & Credited'}
-                      </Badge>
-                    </div>
-                    <h3 className="text-lg font-bold text-slate-900 dark:text-white mt-1">{s.title}</h3>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 max-w-2xl">{s.description}</p>
-                  </div>
 
-                  <div className="text-left md:text-right shrink-0">
-                    <p className="text-xs text-slate-400">Awarded Credits</p>
-                    <p className={`text-2xl font-extrabold ${isRejected ? 'text-slate-400 line-through' : 'text-emerald-500 dark:text-emerald-400'}`}>
-                      {isRejected ? '0' : s.credits || s.suggestedCredits || '0'} pts
-                    </p>
-                  </div>
-                </div>
-
-                {/* Mentor Feedback Area */}
-                <div className="mt-4 p-4 bg-slate-100 dark:bg-dark-900 rounded-xl border border-slate-200 dark:border-dark-750">
-                  <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-950/30 text-primary-600 dark:text-primary-400 flex items-center justify-center font-bold text-sm shrink-0">
-                      👨‍🏫
-                    </div>
-                    <div className="flex-1 space-y-1">
-                      <p className="text-xs font-bold text-slate-500 dark:text-slate-400">Mentor Comments & Advice:</p>
-                      <p className="text-sm text-slate-800 dark:text-slate-200 italic font-medium">
-                        {s.review ? `"${s.review}"` : '"No comments left by mentor."'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Resubmission Action for Rejected activities */}
-                {isRejected && (
-                  <div className="mt-4 pt-3 border-t border-red-100 dark:border-red-950/35 flex items-center justify-between flex-wrap gap-3">
-                    <p className="text-xs text-red-500 dark:text-red-400 flex items-center gap-1">
-                      ⚠️ <strong>Action Required:</strong> Please re-upload this activity after making the requested corrections.
-                    </p>
-                    <button
-                      onClick={() => navigate('/dashboard/student/submission', { state: { resubmitActivity: s } })}
-                      className="btn-primary py-2 px-4 text-xs font-bold bg-red-600 hover:bg-red-700 text-white"
-                    >
-                      🔄 Edit & Re-Submit
-                    </button>
-                  </div>
-                )}
+          <div className="space-y-6 mt-4">
+            {reviewedSubmissions.length === 0 ? (
+              <div className="card">
+                <EmptyState
+                  icon={<BookOpen className="w-12 h-12 text-slate-355" />}
+                  title="No Submission Reviews"
+                  subtitle="Your mentor hasn't reviewed any of your activity submissions yet. Once reviewed, feedback will appear here."
+                />
               </div>
-            );
-          })
-        )}
-      </div>
+            ) : (
+              reviewedSubmissions.map(s => {
+                const isRejected = s.status === 'rejected';
+                return (
+                  <div
+                    key={s.id}
+                    className={`card border-l-4 transition-all duration-300 ${
+                      isRejected 
+                        ? 'border-l-red-500 bg-red-50/10 dark:bg-red-950/5 border-red-100 dark:border-dark-800' 
+                        : 'border-l-emerald-500 bg-emerald-50/10 dark:bg-emerald-950/5 border-emerald-100 dark:border-dark-800'
+                    }`}
+                  >
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-mono text-slate-400 dark:text-slate-500">{s.submittedAt || s.date}</span>
+                          <span className="text-slate-300 dark:text-slate-700">•</span>
+                          <Badge variant="blue">{s.type}</Badge>
+                          <span className="text-slate-300 dark:text-slate-700">•</span>
+                          <Badge variant={isRejected ? 'red' : 'green'}>
+                            {isRejected ? 'Rejected (Requires Correction)' : 'Approved & Credited'}
+                          </Badge>
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-900 dark:text-white mt-1">{s.title}</h3>
+                        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 max-w-2xl">{s.description}</p>
+                      </div>
+
+                      <div className="text-left md:text-right shrink-0">
+                        <p className="text-xs text-slate-400">Awarded Credits</p>
+                        <p className={`text-2xl font-extrabold ${isRejected ? 'text-slate-400 line-through' : 'text-emerald-500 dark:text-emerald-400'}`}>
+                          {isRejected ? '0' : s.credits || s.suggestedCredits || '0'} pts
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Mentor Feedback Area */}
+                    <div className="mt-4 p-4 bg-slate-100 dark:bg-dark-900 rounded-xl border border-slate-200 dark:border-dark-750">
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-950/30 text-primary-600 dark:text-primary-400 flex items-center justify-center font-bold text-sm shrink-0">
+                          👨‍🏫
+                        </div>
+                        <div className="flex-1 space-y-1">
+                          <p className="text-xs font-bold text-slate-500 dark:text-slate-400">Mentor Comments & Advice:</p>
+                          <p className="text-sm text-slate-800 dark:text-slate-200 italic font-medium">
+                            {s.review ? `"${s.review}"` : '"No comments left by mentor."'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Resubmission Action for Rejected activities */}
+                    {isRejected && (
+                      <div className="mt-4 pt-3 border-t border-red-100 dark:border-red-950/35 flex items-center justify-between flex-wrap gap-3">
+                        <p className="text-xs text-red-500 dark:text-red-400 flex items-center gap-1">
+                          ⚠️ <strong>Action Required:</strong> Please re-upload this activity after making the requested corrections.
+                        </p>
+                        <button
+                          onClick={() => navigate('/dashboard/student/submission', { state: { resubmitActivity: s } })}
+                          className="btn-primary py-2 px-4 text-xs font-bold bg-red-600 hover:bg-red-700 text-white"
+                        >
+                          🔄 Edit & Re-Submit
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-6 animate-fade-in">
+          {/* Review Metrics */}
+          <div className="grid sm:grid-cols-3 gap-6">
+            <StatCard icon={<BookOpen className="w-6 h-6" />} label="Reviewed Logs" value={reviewedLogs.length} color="primary" />
+            <StatCard icon={<CheckCircle className="w-6 h-6" />} label="Approved" value={approvedLogs.length} color="green" />
+            <StatCard icon={<XCircle className="w-6 h-6" />} label="Rejected" value={rejectedLogs.length} color="red" />
+          </div>
+
+          <div className="space-y-6 mt-4">
+            {reviewedLogs.length === 0 ? (
+              <div className="card">
+                <EmptyState
+                  icon={<BookOpen className="w-12 h-12 text-slate-355" />}
+                  title="No Daily Log Reviews"
+                  subtitle="Your mentor hasn't left feedback on any of your daily activity logs yet. Once reviewed, remarks will show here."
+                />
+              </div>
+            ) : (
+              reviewedLogs.map(l => {
+                const status = l.reviewStatus || 'pending';
+                const isApproved = status === 'approved';
+                const isRejected = status === 'rejected';
+                
+                return (
+                  <div
+                    key={l.id}
+                    className={`card border-l-4 transition-all duration-300 ${
+                      isRejected 
+                        ? 'border-l-red-500 bg-red-50/10 dark:bg-red-950/5 border-red-100 dark:border-dark-800' 
+                        : isApproved
+                          ? 'border-l-emerald-500 bg-emerald-50/10 dark:bg-emerald-950/5 border-emerald-100 dark:border-dark-800'
+                          : 'border-l-amber-500 bg-amber-50/10 dark:bg-amber-950/5 border-amber-100 dark:border-dark-800'
+                    }`}
+                  >
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-mono text-slate-400 dark:text-slate-500">{l.date}</span>
+                          <span className="text-slate-300 dark:text-slate-700">•</span>
+                          <Badge variant={isApproved ? 'green' : isRejected ? 'red' : 'yellow'}>
+                            {isApproved ? 'Approved' : isRejected ? 'Rejected' : 'Pending'}
+                          </Badge>
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-900 dark:text-white mt-1">{l.title}</h3>
+                        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 max-w-2xl">{l.description}</p>
+                        {l.links && <a href={l.links} target="_blank" rel="noreferrer" className="text-xs text-primary-500 hover:underline mt-1 block">{l.links}</a>}
+                      </div>
+                    </div>
+
+                    {/* Mentor Feedback Area */}
+                    <div className="mt-4 p-4 bg-slate-100 dark:bg-dark-900 rounded-xl border border-slate-200 dark:border-dark-750">
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-950/30 text-primary-600 dark:text-primary-400 flex items-center justify-center font-bold text-sm shrink-0">
+                          👨‍🏫
+                        </div>
+                        <div className="flex-1 space-y-1">
+                          <p className="text-xs font-bold text-slate-500 dark:text-slate-400">Mentor Remarks:</p>
+                          <p className="text-sm text-slate-800 dark:text-slate-200 italic font-medium">
+                            {l.mentorRemark ? `"${l.mentorRemark}"` : '"Reviewed with no additional comments."'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Resubmission Action for Rejected logs */}
+                    {isRejected && (
+                      <div className="mt-4 pt-3 border-t border-red-100 dark:border-red-950/35 flex items-center justify-between flex-wrap gap-3">
+                        <p className="text-xs text-red-500 dark:text-red-400 flex items-center gap-1">
+                          ⚠️ <strong>Action Required:</strong> Please edit this log to address mentor feedback.
+                        </p>
+                        <button
+                          onClick={() => navigate('/dashboard/student/logs', { state: { resubmitLog: l } })}
+                          className="btn-primary py-2 px-4 text-xs font-bold bg-red-600 hover:bg-red-700 text-white"
+                        >
+                          🔄 Edit & Re-Submit
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

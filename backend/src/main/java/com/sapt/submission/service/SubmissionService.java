@@ -4,16 +4,23 @@ import com.sapt.submission.dto.SubmissionDto;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
-/**
- * SubmissionService - Interface for submission business logic.
- * TODO (Submission Team): Define and implement all submission operations.
- */
+import java.util.List;
+
 public interface SubmissionService {
 
-    // TODO: SubmissionDto.SubmissionResponse createSubmission(Long studentId, SubmissionDto.CreateSubmissionRequest request);
-    // TODO: SubmissionDto.SubmissionResponse getSubmissionById(Long submissionId);
-    // TODO: Page<SubmissionDto.SubmissionResponse> getStudentSubmissions(Long studentId, Pageable pageable);
-    // TODO: Page<SubmissionDto.SubmissionResponse> getMentorPendingSubmissions(Long mentorId, Pageable pageable);
-    // TODO: void reviewSubmission(Long reviewerId, Long submissionId, SubmissionDto.ReviewSubmissionRequest request);
-    // TODO: void withdrawSubmission(Long studentId, Long submissionId);
+    SubmissionDto.SubmissionResponse createSubmission(String studentId, SubmissionDto.CreateSubmissionRequest request);
+    
+    SubmissionDto.SubmissionResponse getSubmissionById(String submissionId);
+    
+    Page<SubmissionDto.SubmissionResponse> getStudentSubmissions(String studentId, Pageable pageable);
+    
+    List<SubmissionDto.SubmissionResponse> getMentorPendingSubmissions(String mentorId);
+    
+    Page<SubmissionDto.SubmissionResponse> getMentorPendingSubmissions(String mentorId, Pageable pageable);
+    
+    void reviewSubmission(String reviewerId, String submissionId, SubmissionDto.ReviewSubmissionRequest request);
+    
+    void withdrawSubmission(String studentId, String submissionId);
+
+    SubmissionDto.FileDownloadResponse downloadFile(String path);
 }

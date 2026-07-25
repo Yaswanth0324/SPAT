@@ -512,7 +512,7 @@ export const SystemAdminAddAdmin = () => {
       </div>
 
       <div className="card">
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6" autoComplete="off">
 
           {/* ── College Details ── */}
           <Section label="College Details">
@@ -547,6 +547,7 @@ export const SystemAdminAddAdmin = () => {
               <div>
                 <label className="label-field">College Email</label>
                 <input type="email" className="input-field" placeholder="info@college.edu"
+                  autoComplete="off"
                   value={form.collegeEmail} onChange={e => set('collegeEmail', e.target.value)} />
               </div>
               <div>
@@ -570,6 +571,7 @@ export const SystemAdminAddAdmin = () => {
               <div>
                 <label className="label-field">Email <span className="text-red-500">*</span></label>
                 <input type="email" className="input-field" placeholder="admin@college.edu"
+                  autoComplete="off"
                   value={form.adminEmail} onChange={e => set('adminEmail', e.target.value)} required />
               </div>
               <div>
@@ -585,6 +587,7 @@ export const SystemAdminAddAdmin = () => {
                   type={showPassword ? 'text' : 'password'}
                   className="input-field flex-1"
                   placeholder="Set initial login password"
+                  autoComplete="new-password"
                   value={form.adminPassword}
                   onChange={e => set('adminPassword', e.target.value)}
                   required
