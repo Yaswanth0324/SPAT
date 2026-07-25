@@ -171,7 +171,29 @@ public class HodServiceImpl implements HodService {
 
         // ── 9. Approved mentors (for mentors page) ───────────────────────
         List<HodDto.UserSummary> departmentMentors = mentors.stream()
-                .map(this::mapToUserSummary).collect(Collectors.toList());
+                .map(m -> {
+                    List<Submission> mSubs = allSubs.stream()
+                            .filter(s -> m.getId().equals(s.getMentorId()))
+                            .collect(Collectors.toList());
+                    int approvedCount = (int) mSubs.stream().filter(s -> s.getStatus() == SubmissionStatus.APPROVED).count();
+                    int rejectedCount = (int) mSubs.stream().filter(s -> s.getStatus() == SubmissionStatus.REJECTED).count();
+                    int pendingCount  = (int) mSubs.stream().filter(s -> s.getStatus() == SubmissionStatus.PENDING).count();
+                    int processed     = approvedCount + rejectedCount;
+                    int successRate   = processed > 0 ? Math.round((approvedCount * 100f) / processed) : 0;
+                    int credGuided    = mSubs.stream().filter(s -> s.getStatus() == SubmissionStatus.APPROVED)
+                                           .mapToInt(Submission::getAwardedCredits).sum();
+                    int studentCount  = (int) students.stream().filter(s -> m.getId().equals(s.getMentorId())).count();
+                    
+                    HodDto.UserSummary summary = mapToUserSummary(m);
+                    summary.setStudentCount(studentCount);
+                    summary.setReviewsHandled(mSubs.size());
+                    summary.setApprovalsCount(approvedCount);
+                    summary.setRejectedCount(rejectedCount);
+                    summary.setPendingCount(pendingCount);
+                    summary.setSuccessRate(successRate);
+                    summary.setCreditsGuided(credGuided);
+                    return summary;
+                }).collect(Collectors.toList());
 
         return HodDto.DeptStatsResponse.builder()
                 .totalMentors(mentors.size())
@@ -211,10 +233,46 @@ public class HodServiceImpl implements HodService {
         log.info("HOD getDepartmentMentors: userId={}", authUserId);
         User hod = findUser(authUserId);
         String deptId = requireDepartmentId(hod);
-        return userRepository.findByDepartmentIdAndRole(deptId, UserRole.MENTOR)
+
+        List<User> mentors = userRepository.findByDepartmentIdAndRole(deptId, UserRole.MENTOR)
                 .stream()
                 .filter(u -> u.getStatus() == UserStatus.APPROVED)
-                .map(this::mapToUserSummary)
+                .collect(Collectors.toList());
+
+        List<User> students = userRepository.findByDepartmentIdAndRole(deptId, UserRole.STUDENT)
+                .stream()
+                .filter(u -> u.getStatus() == UserStatus.APPROVED)
+                .collect(Collectors.toList());
+
+        List<String> studentIds = students.stream().map(User::getId).collect(Collectors.toList());
+        List<Submission> allSubs = studentIds.isEmpty()
+                ? Collections.emptyList()
+                : submissionRepository.findByStudentIdIn(studentIds);
+
+        return mentors.stream()
+                .map(m -> {
+                    List<Submission> mSubs = allSubs.stream()
+                            .filter(s -> m.getId().equals(s.getMentorId()))
+                            .collect(Collectors.toList());
+                    int approvedCount = (int) mSubs.stream().filter(s -> s.getStatus() == SubmissionStatus.APPROVED).count();
+                    int rejectedCount = (int) mSubs.stream().filter(s -> s.getStatus() == SubmissionStatus.REJECTED).count();
+                    int pendingCount  = (int) mSubs.stream().filter(s -> s.getStatus() == SubmissionStatus.PENDING).count();
+                    int processed     = approvedCount + rejectedCount;
+                    int successRate   = processed > 0 ? Math.round((approvedCount * 100f) / processed) : 0;
+                    int credGuided    = mSubs.stream().filter(s -> s.getStatus() == SubmissionStatus.APPROVED)
+                                           .mapToInt(Submission::getAwardedCredits).sum();
+                    int studentCount  = (int) students.stream().filter(s -> m.getId().equals(s.getMentorId())).count();
+                    
+                    HodDto.UserSummary summary = mapToUserSummary(m);
+                    summary.setStudentCount(studentCount);
+                    summary.setReviewsHandled(mSubs.size());
+                    summary.setApprovalsCount(approvedCount);
+                    summary.setRejectedCount(rejectedCount);
+                    summary.setPendingCount(pendingCount);
+                    summary.setSuccessRate(successRate);
+                    summary.setCreditsGuided(credGuided);
+                    return summary;
+                })
                 .collect(Collectors.toList());
     }
 
@@ -291,14 +349,15 @@ public class HodServiceImpl implements HodService {
         return c.contains("conference") || c.contains("research") || c.contains("publication");
     }
 
-    // ── Star / badge thresholds (mirrors STAR_THRESHOLDS in mockData.js) ─
+    // ── Star / badge thresholds (mirrors STAR_THRESHOLDS in frontend/src/utils/mockData.js) ─
+    // 1★ = 100 credits | 2★ = 250 | 3★ = 500 | 4★ = 1000 | 5★ = 2000
 
     private int computeStars(int credits) {
-        if (credits >= 500) return 5;
-        if (credits >= 300) return 4;
-        if (credits >= 150) return 3;
-        if (credits >= 50)  return 2;
-        if (credits >= 10)  return 1;
+        if (credits >= 2000) return 5;
+        if (credits >= 1000) return 4;
+        if (credits >= 500)  return 3;
+        if (credits >= 250)  return 2;
+        if (credits >= 100)  return 1;
         return 0;
     }
 

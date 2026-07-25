@@ -4,7 +4,7 @@
 // All requests automatically attach the Bearer JWT token from localStorage.
 // =====================================================================
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+const BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 // ── Token helpers ─────────────────────────────────────────────────────────────
 const TOKEN_KEY = 'spark_jwt_token';
@@ -12,6 +12,12 @@ const TOKEN_KEY = 'spark_jwt_token';
 export const getToken  = ()          => localStorage.getItem(TOKEN_KEY);
 export const setToken  = (token)     => localStorage.setItem(TOKEN_KEY, token);
 export const clearToken = ()         => localStorage.removeItem(TOKEN_KEY);
+
+// ── Session-expired event (fired on 401/403 so AuthContext can auto-logout) ────
+export const SESSION_EXPIRED_EVENT = 'spat:session-expired';
+const dispatchSessionExpired = () => {
+  window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT));
+};
 
 // ── Core fetch wrapper ────────────────────────────────────────────────────────
 /**
@@ -33,6 +39,17 @@ const request = async (endpoint, options = {}) => {
     ...options,
     headers,
   });
+
+  // ── Auto-logout on 401 / 403 ────────────────────────────────────────────────
+  // 401 = token expired or missing, 403 = forbidden (role mismatch)
+  // Skip auto-logout for the login endpoint itself to avoid loops
+  const isLoginEndpoint = endpoint === '/auth/login';
+  if ((response.status === 401 || response.status === 403) && !isLoginEndpoint) {
+    dispatchSessionExpired();
+    const error = new Error('Session expired. Please login again.');
+    error.status = response.status;
+    throw error;
+  }
 
   // Read as text first — avoids "Unexpected end of JSON" on empty bodies (204 etc.)
   const text = await response.text();
@@ -205,8 +222,79 @@ export const apiSendOtp = (email, purpose) =>
 export const apiVerifyOtp = (email, otp, purpose) =>
   api.post('/auth/otp/verify', { email, otp, purpose });
 
+export const apiResetPassword = (email, otp, newPassword) =>
+  api.post('/auth/password/reset', { email, otp, newPassword });
+
 export const apiUpdateProfile = (userId, data) =>
   api.put(`/auth/users/${userId}/profile`, data);
+
+export const studentApi = {
+  getDashboardStats: () =>
+    api.get('/student/dashboard/stats'),
+  getCategories: () =>
+    api.get('/student/categories'),
+  createCustomCategory: (data) =>
+    api.post('/student/categories/custom', data),
+  getSubmissions: () =>
+    api.get('/student/submissions'),
+  createSubmission: (data) =>
+    api.post('/student/submissions', data),
+  getLogs: () =>
+    api.get('/student/logs'),
+  createLog: (data) =>
+    api.post('/student/logs', data),
+  updateLog: (id, data) =>
+    api.put(`/student/logs/${id}`, data),
+};
+
+export const mentorApi = {
+  getProfile: () =>
+    api.get('/mentor/profile'),
+  getStudents: () =>
+    api.get('/mentor/students'),
+  getDashboardStats: () =>
+    api.get('/mentor/dashboard'),
+  getPendingSubmissions: () =>
+    api.get('/mentor/submissions/pending'),
+  approveSubmission: (id, reviewText, credits) =>
+    api.put(`/mentor/submissions/${id}/approve`, { review: reviewText, credits }),
+  rejectSubmission: (id, reviewText) =>
+    api.put(`/mentor/submissions/${id}/reject`, { review: reviewText }),
+  getLogs: () =>
+    api.get('/mentor/logs'),
+  reviewLog: (id, status, remark) =>
+    api.put(`/mentor/logs/${id}/remark?status=${status}&remark=${encodeURIComponent(remark)}`, {}),
+  getStudentSubmissions: (studentId) =>
+    api.get(`/mentor/students/${studentId}/submissions`),
+};
+
+export const notificationApi = {
+  /** GET /notifications — all notifications for logged-in user */
+  getAll: () =>
+    api.get('/notifications'),
+
+  /** GET /notifications/unread-count — count of unread */
+  getUnreadCount: () =>
+    api.get('/notifications/unread-count'),
+
+  /** PUT /notifications/:id/read — mark one as read */
+  markAsRead: (id) =>
+    api.put(`/notifications/${id}/read`, {}),
+
+  /** PUT /notifications/read-all — mark all as read */
+  markAllAsRead: () =>
+    api.put('/notifications/read-all', {}),
+};
+
+export const reviewApi = {
+  /** GET /reviews — fetch all application reviews from database */
+  getAll: () =>
+    api.get('/reviews'),
+
+  /** POST /reviews — create a new user review in database */
+  create: (data) =>
+    api.post('/reviews', data),
+};
 
 export const authApi = {
   login: apiLogin,
@@ -215,3 +303,4 @@ export const authApi = {
 };
 
 export default api;
+

@@ -4,7 +4,7 @@ import { getUsers, updateUser, getSubmissions } from '../../../utils/localStorag
 import { ROLES } from '../../../utils/mockData';
 import { useAuth } from '../../../context/AuthContext';
 import { StatCard, Modal, Badge, useToast, EmptyState, Avatar } from '../../../components/ui/UIComponents';
-import { apiGetUsersByCollege, apiUpdateUserStatus } from '../../../utils/api';
+import { apiGetUsersByCollege, apiUpdateUserStatus, hodApi } from '../../../utils/api';
 
 const getMentorStats = (mentorId) => {
   const all = getSubmissions().filter(s => s.mentorId === mentorId);
@@ -179,63 +179,25 @@ export const HODMentors = () => {
   const { user } = useAuth();
   const [selected, setSelected] = useState(null);
   const [mentors, setMentors] = useState([]);
-  const [allStudents, setAllStudents] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
     const fetchMentors = async () => {
       if (!user.college || !user.department) return;
+      setLoading(true);
       try {
-        const list = await apiGetUsersByCollege(user.college, 'MENTOR');
-        const filtered = list
-          .filter(u => {
-            const uDept = (u.departmentName || '').trim().toLowerCase();
-            const HODDept = (user.department || '').trim().toLowerCase();
-            const isApproved = u.status && u.status.toUpperCase() === 'APPROVED';
-            return uDept && HODDept && uDept === HODDept && isApproved;
-          })
-          .map(u => ({
-            ...u,
-            status: 'approved',
-            department: u.departmentName
-          }));
-        if (active) setMentors(filtered);
-      } catch (err) {}
+        const list = await hodApi.getMentors();
+        if (active) setMentors(list || []);
+      } catch (err) {
+        console.error("Failed to fetch department mentors:", err);
+      } finally {
+        if (active) setLoading(false);
+      }
     };
     fetchMentors();
     return () => { active = false; };
   }, [user.college, user.department]);
-
-  useEffect(() => {
-    let active = true;
-    const fetchStudents = async () => {
-      if (!user.college) return;
-      try {
-        const list = await apiGetUsersByCollege(user.college, 'STUDENT');
-        if (active) setAllStudents(list);
-      } catch (err) {}
-    };
-    fetchStudents();
-    return () => { active = false; };
-  }, [user.college]);
-
-  const selectedStats = selected ? getMentorStats(selected.id) : null;
-
-  const RateBar = ({ rate }) => {
-    if (rate === null) return <p className="text-xs text-slate-400 mt-1">No reviewed submissions yet</p>;
-    const color = rate >= 70 ? 'bg-emerald-500' : rate >= 40 ? 'bg-amber-500' : 'bg-red-500';
-    return (
-      <div className="mt-2">
-        <div className="flex justify-between mb-1">
-          <span className="text-xs text-slate-500 dark:text-slate-400">Success Rate</span>
-          <span className={`text-xs font-bold ${rate >= 70 ? 'text-emerald-600' : rate >= 40 ? 'text-amber-600' : 'text-red-600'}`}>{rate}%</span>
-        </div>
-        <div className="h-2 bg-slate-200 dark:bg-dark-700 rounded-full overflow-hidden">
-          <div className={`h-full rounded-full ${color} transition-all duration-700`} style={{ width: `${rate}%` }} />
-        </div>
-      </div>
-    );
-  };
 
   return (
     <div className="animate-fade-in">
@@ -244,7 +206,11 @@ export const HODMentors = () => {
         <p className="text-slate-500 dark:text-slate-400 mt-1">All approved mentors in your department</p>
       </div>
 
-      {mentors.length === 0 ? (
+      {loading ? (
+        <div className="animate-fade-in flex items-center justify-center min-h-[200px]">
+          <span className="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></span>
+        </div>
+      ) : mentors.length === 0 ? (
         <div className="card"><EmptyState icon={<Users className="w-12 h-12" />} title="No mentors yet" subtitle="Approve mentor requests to see them here" /></div>
       ) : (
         <div className="card overflow-x-auto p-0">
@@ -261,10 +227,8 @@ export const HODMentors = () => {
             </thead>
             <tbody className="divide-y divide-orange-100/50 dark:divide-dark-850 text-sm text-slate-700 dark:text-slate-350">
               {mentors.map(m => {
-                const stats = getMentorStats(m.id);
                 const position = m.position || (m.name.startsWith('Prof.') ? 'Professor' : m.name.startsWith('Dr.') ? 'Associate Professor' : 'Assistant Professor');
-                const rateStr = stats.rate === null ? '0%' : `${stats.rate}%`;
-                const studentCount = allStudents.filter(s => s.mentorId === m.id).length;
+                const rateStr = `${m.successRate ?? 0}%`;
                 return (
                   <tr key={m.id} className="hover:bg-orange-50/30 dark:hover:bg-orange-950/10 transition-colors">
                     <td className="p-4 flex items-center gap-3">
@@ -274,15 +238,15 @@ export const HODMentors = () => {
                         <p className="text-xs text-slate-400">{m.email}</p>
                       </div>
                     </td>
-                    <td className="p-4 font-semibold">{m.department || user.department}</td>
+                    <td className="p-4 font-semibold">{m.departmentName || m.department || user.department}</td>
                     <td className="p-4 font-medium">{position}</td>
                     <td className="p-4 font-semibold">
                       <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-full text-xs font-bold bg-orange-100 text-orange-850 dark:bg-orange-950/30 dark:text-orange-300 animate-pulse-subtle">
-                        {studentCount}
+                        {m.studentCount ?? 0}
                       </span>
                     </td>
                     <td className="p-4">
-                      <span className={`font-bold ${stats.rate >= 70 ? 'text-emerald-600' : stats.rate >= 40 ? 'text-amber-600' : 'text-rose-600'}`}>
+                      <span className={`font-bold ${(m.successRate ?? 0) >= 70 ? 'text-emerald-600' : (m.successRate ?? 0) >= 40 ? 'text-amber-600' : 'text-rose-600'}`}>
                         {rateStr}
                       </span>
                     </td>
@@ -304,7 +268,7 @@ export const HODMentors = () => {
       )}
 
       <Modal isOpen={!!selected} onClose={() => setSelected(null)} title="Mentor Performance">
-        {selected && selectedStats && (
+        {selected && (
           <div className="space-y-5">
             {/* Profile */}
             <div className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-dark-850 rounded-2xl">
@@ -314,7 +278,7 @@ export const HODMentors = () => {
                 <div className="flex flex-wrap gap-2 mt-1.5">
                   <Badge variant="green">Approved Mentor</Badge>
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-800 dark:bg-orange-950/40 dark:text-orange-300">
-                    {allStudents.filter(s => s.mentorId === selected.id).length} Students
+                    {selected.studentCount ?? 0} Students
                   </span>
                 </div>
               </div>
@@ -335,15 +299,15 @@ export const HODMentors = () => {
             {/* Stats Grid */}
             <div className="grid grid-cols-3 gap-3 text-center">
               <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl">
-                <p className="text-2xl font-bold text-emerald-600">{selectedStats.approved}</p>
+                <p className="text-2xl font-bold text-emerald-600">{selected.approvalsCount ?? 0}</p>
                 <p className="text-xs text-slate-500 mt-1">Approved</p>
               </div>
               <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-xl">
-                <p className="text-2xl font-bold text-red-600">{selectedStats.rejected}</p>
+                <p className="text-2xl font-bold text-red-600">{selected.rejectedCount ?? 0}</p>
                 <p className="text-xs text-slate-500 mt-1">Rejected</p>
               </div>
               <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-xl">
-                <p className="text-2xl font-bold text-amber-600">{selectedStats.pending}</p>
+                <p className="text-2xl font-bold text-amber-600">{selected.pendingCount ?? 0}</p>
                 <p className="text-xs text-slate-500 mt-1">Pending</p>
               </div>
             </div>
@@ -354,26 +318,26 @@ export const HODMentors = () => {
                 <TrendingUp className="w-5 h-5 text-primary-600 dark:text-primary-400" />
                 <span className="font-semibold text-slate-800 dark:text-white">Approval Success Rate</span>
               </div>
-              {selectedStats.rate === null ? (
+              {selected.reviewsHandled === 0 ? (
                 <p className="text-sm text-slate-500">No reviewed submissions yet</p>
               ) : (
                 <>
                   <div className="flex justify-between mb-2">
                     <span className="text-sm text-slate-600 dark:text-slate-400">
-                      {selectedStats.approved} approved out of {selectedStats.approved + selectedStats.rejected} reviewed
+                      {selected.approvalsCount ?? 0} approved out of {(selected.approvalsCount ?? 0) + (selected.rejectedCount ?? 0)} reviewed
                     </span>
-                    <span className={`text-2xl font-black ${selectedStats.rate >= 70 ? 'text-emerald-600' : selectedStats.rate >= 40 ? 'text-amber-600' : 'text-red-600'}`}>
-                      {selectedStats.rate}%
+                    <span className={`text-2xl font-black ${(selected.successRate ?? 0) >= 70 ? 'text-emerald-600' : (selected.successRate ?? 0) >= 40 ? 'text-amber-600' : 'text-red-600'}`}>
+                      {selected.successRate ?? 0}%
                     </span>
                   </div>
                   <div className="h-3 bg-slate-200 dark:bg-dark-700 rounded-full overflow-hidden">
                     <div
-                      className={`h-full rounded-full transition-all duration-700 ${selectedStats.rate >= 70 ? 'bg-emerald-500' : selectedStats.rate >= 40 ? 'bg-amber-500' : 'bg-red-500'}`}
-                      style={{ width: `${selectedStats.rate}%` }}
+                      className={`h-full rounded-full transition-all duration-700 ${(selected.successRate ?? 0) >= 70 ? 'bg-emerald-500' : (selected.successRate ?? 0) >= 40 ? 'bg-amber-500' : 'bg-red-500'}`}
+                      style={{ width: `${selected.successRate ?? 0}%` }}
                     />
                   </div>
                   <p className="text-xs text-slate-400 mt-1">
-                    {selectedStats.rate >= 70 ? '🌟 Excellent reviewer' : selectedStats.rate >= 40 ? '📊 Average reviewer' : '⚠️ High rejection rate'}
+                    {(selected.successRate ?? 0) >= 70 ? '🌟 Excellent reviewer' : (selected.successRate ?? 0) >= 40 ? '📊 Average reviewer' : '⚠️ High rejection rate'}
                   </p>
                 </>
               )}
@@ -381,7 +345,7 @@ export const HODMentors = () => {
 
             <div className="flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500">
               <BarChart2 className="w-4 h-4" />
-              Total {selectedStats.total} submission{selectedStats.total !== 1 ? 's' : ''} handled
+              Total {selected.reviewsHandled ?? 0} submission{selected.reviewsHandled !== 1 ? 's' : ''} handled
             </div>
           </div>
         )}

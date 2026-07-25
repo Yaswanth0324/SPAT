@@ -4,6 +4,7 @@ import { ROLES } from '../utils/mockData';
 
 // Pages
 import HomePage from '../pages/Home/HomePage';
+import HelpPage from '../pages/Home/HelpPage';
 import LoginPage, { AdminLoginPage } from '../pages/Auth/LoginPage';
 import RegisterPage from '../pages/Auth/RegisterPage';
 

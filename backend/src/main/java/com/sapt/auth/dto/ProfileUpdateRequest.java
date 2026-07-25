@@ -18,4 +18,5 @@ public class ProfileUpdateRequest {
     private String currentPassword;
     private String mentorId;
     private String mentorName;
+    private String rollNo;
 }
