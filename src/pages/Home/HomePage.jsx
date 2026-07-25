@@ -1,10 +1,12 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { GraduationCap, Activity, Star, BarChart2, Trophy, Users, BookOpen, Award, ExternalLink, Code2, Network, Mail, Phone, MapPin } from 'lucide-react';
+import { GraduationCap, Activity, Star, BarChart2, Trophy, Users, BookOpen, Award, ExternalLink, Code2, Network, Mail, Phone, MapPin, MessageSquarePlus, X } from 'lucide-react';
 import Navbar from '../../components/Navbar';
 import { isRegistered } from '../../utils/localStorage';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { StarsDisplay } from '../../components/ui/UIComponents';
+import { StarsDisplay, useToast } from '../../components/ui/UIComponents';
+import { reviewApi } from '../../utils/api';
 
 const flowSteps = [
   {
@@ -49,34 +51,37 @@ const flowSteps = [
   }
 ];
 
-
-const studentTestimonials = [
+const defaultStudentTestimonials = [
   { 
     name: 'Priya Nair', 
     dept: 'CS Engineering, MIT', 
+    category: 'STUDENT',
     rating: 5, 
-    text: 'SPARK has completely transformed how I track my co-curricular accomplishments. The interface is gorgeous, and seeing my star level increase keeps me incredibly motivated!' 
+    text: 'SPAT has completely transformed how I track my co-curricular accomplishments. The interface is gorgeous, and seeing my star level increase keeps me incredibly motivated!' 
   },
   { 
     name: 'Arjun Krishnan', 
     dept: 'IT, VIT University', 
+    category: 'STUDENT',
     rating: 5, 
     text: 'I love the dashboard! Submitting my certificates for hackathons and online courses is effortless, and my mentor reviews them within hours. A perfect platform!' 
   }
 ];
 
-const managementTestimonials = [
+const defaultManagementTestimonials = [
   { 
     name: 'Dr. Priya Sharma', 
     dept: 'HOD, CS Engineering, MIT', 
+    category: 'MANAGEMENT',
     rating: 5, 
-    text: 'Managing student activity credits used to be an administrative nightmare of spreadsheets and lost certificates. SPARK has streamlined the entire verification process into a seamless departmental dashboard.' 
+    text: 'Managing student activity credits used to be an administrative nightmare of spreadsheets and lost certificates. SPAT has streamlined the entire verification process into a seamless departmental dashboard.' 
   },
   { 
     name: 'Prof. Arun Vijay', 
     dept: 'Senior Mentor, MIT College of Eng.', 
+    category: 'MANAGEMENT',
     rating: 5, 
-    text: 'As a mentor, SPARK allows me to stay connected with my students\' extracurricular progress. The approval workflow is highly intuitive, allowing me to review and validate submissions in just a single click.' 
+    text: 'As a mentor, SPAT allows me to stay connected with my students\' extracurricular progress. The approval workflow is highly intuitive, allowing me to review and validate submissions in just a single click.' 
   }
 ];
 
@@ -84,7 +89,46 @@ const HomePage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { theme } = useTheme();
+  const { showToast, ToastComponent } = useToast();
   const isDark = theme === 'dark';
+
+  // Reviews state
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [newReview, setNewReview] = useState({
+    name: user?.name || user?.fullName || '',
+    email: user?.email || '',
+    college: user?.college || user?.collegeName || '',
+    role: user?.role === 'STUDENT' ? 'Student' : user?.role === 'MENTOR' ? 'Mentor' : user?.role === 'HOD' ? 'HOD' : user?.role === 'COLLEGE_ADMIN' ? 'College Management' : 'Student',
+    rating: 5,
+    feedback: ''
+  });
+
+  const handleAddReviewSubmit = async (e) => {
+    e.preventDefault();
+    if (!newReview.name.trim() || !newReview.email.trim() || !newReview.college.trim() || !newReview.role.trim() || !newReview.feedback.trim()) {
+      showToast('Please fill in all required fields.', 'error');
+      return;
+    }
+    setSubmittingReview(true);
+    try {
+      await reviewApi.create(newReview);
+      showToast('Thank you! Your review has been submitted.', 'success');
+      setShowReviewModal(false);
+      setNewReview({
+        name: user?.name || user?.fullName || '',
+        email: user?.email || '',
+        college: user?.college || user?.collegeName || '',
+        role: 'Student',
+        rating: 5,
+        feedback: ''
+      });
+    } catch (err) {
+      showToast(err.message || 'Failed to submit review', 'error');
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
 
   const handleGetStarted = () => {
     if (user) {
@@ -126,6 +170,7 @@ const HomePage = () => {
   // ────────────────────────────────────────────────────
   return (
     <div style={{ background: pageBg, minHeight: '100vh', color: bodyTextColor }}>
+      {ToastComponent}
       <Navbar />
 
       {/* ── HERO ──────────────────────────────────────────── */}
@@ -148,14 +193,14 @@ const HomePage = () => {
 
           <h1 className="font-display text-6xl md:text-8xl font-black leading-none tracking-tight"
             style={{ color: headingColor }}>
-            SPARK
+            SPAT
             <span className="block text-xl md:text-3xl mt-3.5 font-bold tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-primary-500 via-orange-500 to-amber-500">
-              Student Performance, Activities & Records Keeper
+              Student Performance, Activities & Records Tracker
             </span>
           </h1>
 
           <p className="text-lg md:text-xl max-w-2xl mx-auto leading-relaxed font-normal" style={{ color: bodyTextColor }}>
-            SPARK helps students track co-curricular activities, earn credits, and showcase achievements — all in one beautiful, intelligent platform.
+            SPAT helps students track co-curricular activities, earn credits, and showcase achievements — all in one beautiful, intelligent platform.
           </p>
 
           <div className="flex flex-wrap gap-4 justify-center pt-1.5">
@@ -273,9 +318,18 @@ const HomePage = () => {
       {/* ── TESTIMONIALS ──────────────────────────────────── */}
       <section id="reviews" className="py-24 px-4" style={{ background: sectionAltBg }}>
         <div className="max-w-7xl mx-auto space-y-16">
-          <div className="text-center">
+          <div className="text-center space-y-4">
             <h2 className="font-display text-4xl font-bold" style={{ color: headingColor }}>Testimonials</h2>
-            <p className="mt-3 text-lg" style={{ color: subtleColor }}>Trusted by students and educational administrators alike</p>
+            <p className="text-lg max-w-xl mx-auto" style={{ color: subtleColor }}>Trusted by students and educational administrators alike</p>
+            <div>
+              <button
+                onClick={() => setShowReviewModal(true)}
+                className="btn-primary inline-flex items-center gap-2 px-6 py-2.5 text-sm font-semibold shadow-glow transition-transform hover:scale-105"
+              >
+                <MessageSquarePlus className="w-4 h-4" />
+                Add Your Review
+              </button>
+            </div>
           </div>
 
           <div className="grid lg:grid-cols-2 gap-12">
@@ -286,8 +340,8 @@ const HomePage = () => {
                 <h3 className="text-lg font-bold uppercase tracking-wider text-primary-500">Student Voices</h3>
               </div>
               <div className="grid sm:grid-cols-2 gap-6">
-                {studentTestimonials.map((r) => (
-                  <div key={r.name}
+                {defaultStudentTestimonials.map((r, idx) => (
+                  <div key={idx}
                     className="rounded-2xl p-6 transition-all hover:-translate-y-1 flex flex-col justify-between"
                     style={{ background: cardBg, border: cardBorder, backdropFilter: 'blur(8px)' }}>
                     <div>
@@ -310,8 +364,8 @@ const HomePage = () => {
                 <h3 className="text-lg font-bold uppercase tracking-wider text-primary-500">College Management Voices</h3>
               </div>
               <div className="grid sm:grid-cols-2 gap-6">
-                {managementTestimonials.map((r) => (
-                  <div key={r.name}
+                {defaultManagementTestimonials.map((r, idx) => (
+                  <div key={idx}
                     className="rounded-2xl p-6 transition-all hover:-translate-y-1 flex flex-col justify-between"
                     style={{ background: cardBg, border: cardBorder, backdropFilter: 'blur(8px)' }}>
                     <div>
@@ -330,13 +384,136 @@ const HomePage = () => {
         </div>
       </section>
 
+      {/* ── ADD REVIEW MODAL ──────────────────────────────── */}
+      {showReviewModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-lg rounded-3xl p-8 shadow-2xl relative border"
+            style={{
+              background: isDark ? 'linear-gradient(135deg, #1a0a02 0%, #1e0d05 100%)' : '#ffffff',
+              borderColor: isDark ? 'rgba(234,88,12,0.35)' : '#fed7aa'
+            }}
+          >
+            <button
+              onClick={() => setShowReviewModal(false)}
+              className="absolute top-5 right-5 p-2 rounded-xl text-slate-400 hover:text-white transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="text-center mb-6">
+              <div className="inline-flex p-3 rounded-2xl mb-3" style={{ background: 'linear-gradient(135deg, #ea580c, #dc2626)' }}>
+                <MessageSquarePlus className="w-7 h-7 text-white" />
+              </div>
+              <h3 className="font-display text-xl font-bold" style={{ color: headingColor }}>Rate &amp; Review SPAT</h3>
+              <p className="text-sm mt-1" style={{ color: subtleColor }}>Share your experience with our platform</p>
+            </div>
+
+            <form onSubmit={handleAddReviewSubmit} className="space-y-4">
+              <div>
+                <label className="label-field">Name <span className="text-red-500">*</span></label>
+                <input
+                  type="text"
+                  className="input-field"
+                  placeholder="Enter your full name"
+                  value={newReview.name}
+                  onChange={e => setNewReview({ ...newReview, name: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="label-field">Gmail / Email <span className="text-red-500">*</span></label>
+                <input
+                  type="email"
+                  className="input-field"
+                  placeholder="your.email@gmail.com"
+                  value={newReview.email}
+                  onChange={e => setNewReview({ ...newReview, email: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="label-field">College <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    className="input-field"
+                    placeholder="e.g. MIT College"
+                    value={newReview.college}
+                    onChange={e => setNewReview({ ...newReview, college: e.target.value })}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="label-field">Role <span className="text-red-500">*</span></label>
+                  <select
+                    className="select-field"
+                    value={newReview.role}
+                    onChange={e => setNewReview({ ...newReview, role: e.target.value })}
+                    required
+                  >
+                    <option value="Student">Student</option>
+                    <option value="Mentor">Mentor</option>
+                    <option value="HOD">HOD</option>
+                    <option value="College Management">College Management</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="label-field">Stars <span className="text-red-500">*</span></label>
+                <div className="flex items-center gap-2 mt-1">
+                  {[1, 2, 3, 4, 5].map((starVal) => (
+                    <button
+                      type="button"
+                      key={starVal}
+                      onClick={() => setNewReview({ ...newReview, rating: starVal })}
+                      className="p-1 transition-transform hover:scale-125 focus:outline-none"
+                    >
+                      <Star
+                        className={`w-7 h-7 ${starVal <= newReview.rating ? 'text-amber-400 fill-amber-400' : 'text-slate-400 opacity-40'}`}
+                      />
+                    </button>
+                  ))}
+                  <span className="text-sm font-bold ml-2" style={{ color: headingColor }}>
+                    {newReview.rating} / 5 Stars
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label className="label-field">Feedback <span className="text-red-500">*</span></label>
+                <textarea
+                  className="input-field min-h-[100px] resize-none"
+                  placeholder="Write your feedback about SPAT..."
+                  value={newReview.feedback}
+                  onChange={e => setNewReview({ ...newReview, feedback: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={submittingReview}
+                  className="btn-primary w-full justify-center py-3 text-base shadow-glow"
+                >
+                  {submittingReview ? 'Submitting...' : 'Submit Review'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* ── CTA ───────────────────────────────────────────── */}
       <section className="py-20 px-4">
         <div className="max-w-3xl mx-auto text-center">
           <div className="rounded-3xl p-12 shadow-glow"
             style={{ background: cardBg, border: `1px solid rgba(234,88,12,0.3)`, backdropFilter: 'blur(12px)' }}>
             <h2 className="font-display text-4xl font-bold mb-4" style={{ color: headingColor }}>Ready to Track Your Journey?</h2>
-            <p className="mb-8" style={{ color: bodyTextColor }}>Join thousands of students already using SPARK to showcase their achievements.</p>
+            <p className="mb-8" style={{ color: bodyTextColor }}>Join thousands of students already using SPAT to showcase their achievements.</p>
             <button onClick={handleGetStarted} className="btn-primary text-base px-10 py-4 shadow-glow-lg text-lg">
               Get Started — It's Free
             </button>
@@ -349,11 +526,11 @@ const HomePage = () => {
         <div className="max-w-7xl mx-auto grid md:grid-cols-3 gap-10">
           <div>
             <div className="flex items-center gap-3 mb-4">
-              <img src={isDark ? "/spark-logo1.png" : "/spark-logo2.png"} className="w-8 h-8 object-contain rounded-xl" alt="SPARK Logo" />
-              <span className="font-display font-bold text-xl" style={{ color: headingColor }}>SPARK</span>
+              <img src={isDark ? "/spat-logo1.png" : "/spat-logo2.png"} className="w-8 h-8 object-contain rounded-xl" alt="SPAT Logo" />
+              <span className="font-display font-bold text-xl" style={{ color: headingColor }}>SPAT</span>
             </div>
             <p className="text-sm leading-relaxed" style={{ color: subtleColor }}>
-              Student Performance, Activities & Records Keeper — Empowering students to document, track, and celebrate their achievements.
+              Student Performance, Activities & Records Tracker — Empowering students to document, track, and celebrate their achievements.
             </p>
             <div className="flex gap-3 mt-4">
               {[ExternalLink, Code2, Network].map((Icon, i) => (
@@ -380,7 +557,7 @@ const HomePage = () => {
             <h3 className="font-semibold mb-4" style={{ color: headingColor }}>Contact</h3>
             <div className="space-y-3">
               <div className="flex items-center gap-3 text-sm" style={{ color: subtleColor }}>
-                <Mail className="w-4 h-4 text-primary-500" /><span>support@spark.edu.in</span>
+                <Mail className="w-4 h-4 text-primary-500" /><span>support@spat.edu.in</span>
               </div>
               <div className="flex items-center gap-3 text-sm" style={{ color: subtleColor }}>
                 <Phone className="w-4 h-4 text-primary-500" /><span>+91 98765 43210</span>
@@ -393,7 +570,7 @@ const HomePage = () => {
         </div>
         <div className="max-w-7xl mx-auto mt-10 pt-6 text-center text-sm"
           style={{ borderTop: `1px solid ${dividerColor}`, color: mutedColor }}>
-          © {new Date().getFullYear()} SPARK — Student Performance, Activities & Records Keeper. All rights reserved.
+          © {new Date().getFullYear()} SPAT — Student Performance, Activities & Records Tracker. All rights reserved.
         </div>
       </footer>
     </div>

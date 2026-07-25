@@ -5,13 +5,13 @@
 import { DEPARTMENTS } from './mockData';
 
 const KEYS = {
-  USERS: 'spark_users',
-  CURRENT_USER: 'spark_current_user',
-  SUBMISSIONS: 'spark_submissions',
-  LOGS: 'spark_logs',
-  COLLEGES: 'spark_colleges',
-  REGISTERED: 'spark_registered',
-  THEME: 'spark_theme',
+  USERS: 'spat_users',
+  CURRENT_USER: 'spat_current_user',
+  SUBMISSIONS: 'spat_submissions',
+  LOGS: 'spat_logs',
+  COLLEGES: 'spat_colleges',
+  REGISTERED: 'spat_registered',
+  THEME: 'spat_theme',
 };
 
 // ---- INIT ----
@@ -212,14 +212,14 @@ export const setTheme = (theme) => localStorage.setItem(KEYS.THEME, theme);
 // ---- DYNAMIC CATEGORIES ----
 export const getCustomCategories = () => {
   try {
-    return JSON.parse(localStorage.getItem('spark_custom_categories') || '{}');
+    return JSON.parse(localStorage.getItem('spat_custom_categories') || '{}');
   } catch (e) {
     return {};
   }
 };
 
 export const saveCustomCategories = (cats) => {
-  localStorage.setItem('spark_custom_categories', JSON.stringify(cats));
+  localStorage.setItem('spat_custom_categories', JSON.stringify(cats));
 };
 
 export const addCustomCategory = (name, achievementType, points) => {
@@ -245,6 +245,6 @@ export const generateAdminId = () =>
 export const simulateOTP = () => {
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
   // In a real app, this would be sent via email
-  console.log(`[SPARK OTP Simulation] Your OTP is: ${otp}`);
+  console.log(`[SPAT OTP Simulation] Your OTP is: ${otp}`);
   return otp;
 };

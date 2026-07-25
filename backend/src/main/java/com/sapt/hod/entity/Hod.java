@@ -2,37 +2,36 @@ package com.sapt.hod.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
-import java.time.LocalDateTime;
 
 /**
- * Hod - Head of Department MySQL Entity.
- * TODO (HOD Team): Add department, college reference, etc.
+ * HOD mirror table — synced from users table via DataSyncService (JDBC).
+ * This entity is used for Hibernate schema auto-creation (ddl-auto=update).
+ * Actual data operations use JdbcTemplate directly.
+ * Uses VARCHAR(36) (not CHAR) for ID to ensure TiDB/MySQL UTF-8 compatibility.
  */
 @Entity
 @Table(name = "hods")
-@Data @Builder @NoArgsConstructor @AllArgsConstructor
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class Hod {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(name = "id", nullable = false, length = 36)
+    private String id;
 
-    @Column(nullable = false, unique = true)
-    private Long authUserId;
+    @Column(name = "name", nullable = false)
+    private String name;
 
-    private String fullName;
-    private String employeeId;
-    private String department;
-    private Long collegeId;
+    @Column(name = "email", nullable = false, unique = true)
+    private String email;
 
-    @Column(nullable = false)
-    private boolean active = true;
+    @Column(name = "college_id", length = 36)
+    private String collegeId;
 
-    @CreationTimestamp @Column(updatable = false)
-    private LocalDateTime createdAt;
+    @Column(name = "department_id", length = 36)
+    private String departmentId;
 
-    @UpdateTimestamp
-    private LocalDateTime updatedAt;
+    @Column(name = "status", length = 20)
+    private String status;
 }

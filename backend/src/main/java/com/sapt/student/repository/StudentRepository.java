@@ -3,15 +3,15 @@ package com.sapt.student.repository;
 import com.sapt.student.entity.Student;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
+
+import java.util.List;
 import java.util.Optional;
 
-/**
- * StudentRepository - JPA Repository for Student entity.
- * TODO (Student Team): Add custom query methods as needed.
- */
 @Repository
-public interface StudentRepository extends JpaRepository<Student, Long> {
-    Optional<Student> findByAuthUserId(Long authUserId);
-    Optional<Student> findByRollNumber(String rollNumber);
-    // TODO: findByDepartmentAndBatch(), findByMentorId(), etc.
+public interface StudentRepository extends JpaRepository<Student, String> {
+    Optional<Student> findByEmail(String email);
+    List<Student> findByCollegeId(String collegeId);
+    List<Student> findByDepartmentId(String departmentId);
+    List<Student> findByMentorId(String mentorId);
+    boolean existsByEmail(String email);
 }

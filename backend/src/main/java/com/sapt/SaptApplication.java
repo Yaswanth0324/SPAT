@@ -35,6 +35,28 @@ public class SaptApplication {
                 System.setProperty(entry.getKey(), entry.getValue());
             }
         });
+
+        // Ensure app_reviews table is recreated with clean schema (id, name, email, college, role, rating, feedback, created_at)
+        try {
+            String url = System.getProperty("MYSQL_URL");
+            String user = System.getProperty("MYSQL_USERNAME");
+            String pass = System.getProperty("MYSQL_PASSWORD");
+            if (url != null && user != null && pass != null) {
+                try (java.sql.Connection conn = java.sql.DriverManager.getConnection(url, user, pass);
+                     java.sql.Statement stmt = conn.createStatement()) {
+                    stmt.executeUpdate("DROP TABLE IF EXISTS spat_app_reviews");
+                    try (java.sql.ResultSet rs = stmt.executeQuery(
+                            "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'app_reviews' AND COLUMN_NAME IN ('category', 'dept', 'text')")) {
+                        if (rs.next()) {
+                            System.err.println("[INFO] Pre-start cleanup: Dropping legacy app_reviews table to remove legacy columns...");
+                            stmt.executeUpdate("DROP TABLE IF EXISTS app_reviews");
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("[WARN] Database pre-start check notice: " + e.getMessage());
+        }
     }
 
     public static void main(String[] args) {

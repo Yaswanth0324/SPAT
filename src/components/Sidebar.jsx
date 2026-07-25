@@ -34,9 +34,9 @@ const Sidebar = ({ links, title }) => {
         className="flex items-center gap-3 px-4 py-6"
         style={{ borderBottom: isDark ? '1px solid rgba(234,88,12,0.2)' : '1px solid #fed7aa' }}
       >
-        <img src={isDark ? "/spark-logo1.png" : "/spark-logo2.png"} className="w-10 h-10 object-contain rounded-xl" alt="SPARK Logo" />
+        <img src={isDark ? "/spat-logo1.png" : "/spat-logo2.png"} className="w-10 h-10 object-contain rounded-xl" alt="SPAT Logo" />
         <div>
-          <p className="font-display font-bold text-primary-600 text-sm leading-tight">SPARK</p>
+          <p className="font-display font-bold text-primary-600 text-sm leading-tight">SPAT</p>
           <p className="text-xs leading-tight" style={{ color: isDark ? '#fdba74' : '#92400e' }}>{title}</p>
         </div>
       </div>

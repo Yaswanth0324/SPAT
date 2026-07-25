@@ -105,6 +105,9 @@ public class LoginResponse {
     /** Employee/Admin ID — COLLEGE_ADMIN, HOD, MENTOR roles */
     private String adminId;
 
+    /** Account registration timestamp */
+    private java.time.LocalDateTime createdAt;
+
     public String getAvatar() {
         return avatarUrl;
     }

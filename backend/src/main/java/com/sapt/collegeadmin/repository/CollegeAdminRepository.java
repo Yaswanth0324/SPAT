@@ -1,14 +1,15 @@
 package com.sapt.collegeadmin.repository;
 
-import com.sapt.collegeadmin.entity.CollegeAdmin;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
-import java.util.List;
-import java.util.Optional;
-
-/** CollegeAdminRepository - TODO (CollegeAdmin Team): Add custom query methods. */
-@Repository
-public interface CollegeAdminRepository extends JpaRepository<CollegeAdmin, Long> {
-    Optional<CollegeAdmin> findByAuthUserId(Long authUserId);
-    List<CollegeAdmin> findByCollegeId(Long collegeId);
+/**
+ * @deprecated The `college_admins` table no longer exists as a separate entity.
+ *
+ * All college admin data is in the unified `users` table (role = COLLEGE_ADMIN).
+ * Use {@link com.sapt.auth.repository.UserRepository} instead:
+ *
+ *   userRepository.findByRole(UserRole.COLLEGE_ADMIN)
+ *   userRepository.findByCollegeIdAndRole(collegeId, UserRole.COLLEGE_ADMIN)
+ */
+@Deprecated(since = "2.0", forRemoval = true)
+public interface CollegeAdminRepository {
+    // REMOVED — use com.sapt.auth.repository.UserRepository
 }

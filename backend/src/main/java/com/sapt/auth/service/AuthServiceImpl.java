@@ -64,6 +64,7 @@ public class AuthServiceImpl implements AuthService {
     private final NotificationService   notificationService;
     private final com.sapt.collegeadmin.repository.CollegeRepository collegeRepository;
     private final com.sapt.collegeadmin.repository.DepartmentRepository departmentRepository;
+    private final com.sapt.config.DataSyncService dataSyncService;
 
     // ============================================================
     // LOGIN
@@ -148,6 +149,7 @@ public class AuthServiceImpl implements AuthService {
                 .hodId(user.getHodId())
                 .rollNo(user.getRollNo())
                 .adminId(user.getAdminId())
+                .createdAt(user.getCreatedAt())
                 .build();
 
     }
@@ -223,6 +225,15 @@ public class AuthServiceImpl implements AuthService {
         String otp = CommonUtils.generateOtp(OTP_LENGTH);
 
         // 4. Create the User record in the unified users table
+        //
+        // NOTE: idCardUrl from the frontend is a base64-encoded image which can be
+        // 5–10 MB. TiDB Cloud enforces a hard 6 MB max row size, so storing raw base64
+        // would crash the INSERT. We store only a small flag ("uploaded") to indicate
+        // the card was provided — the actual file is not persisted server-side.
+        String idCardFlag = (request.getIdCardUrl() != null && !request.getIdCardUrl().isBlank())
+                ? "uploaded"
+                : null;
+
         User newUser = User.builder()
                 .name(request.getFullName())
                 .email(email)
@@ -238,7 +249,7 @@ public class AuthServiceImpl implements AuthService {
                 .departmentName(departmentName)
                 .mentorId(mentorId)
                 .mentorName(mentorName)
-                .idCardUrl(request.getIdCardUrl())
+                .idCardUrl(idCardFlag)
                 .build();
 
         userRepository.save(newUser);
@@ -434,6 +445,9 @@ public class AuthServiceImpl implements AuthService {
         user.setStatus(status);
         userRepository.save(user);
         log.info("User status updated for user {}: {}", userId, status);
+
+        // Keep role-specific mirror tables in sync
+        dataSyncService.syncUserIfApproved(user);
     }
 
     @Override
@@ -454,16 +468,18 @@ public class AuthServiceImpl implements AuthService {
         }
 
         if (request.getPassword() != null && !request.getPassword().isBlank()) {
-            if (request.getCurrentPassword() != null && !request.getCurrentPassword().isBlank()) {
-                if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
-                    throw SaptException.badRequest("Current password is incorrect");
-                }
+            if (request.getCurrentPassword() == null || request.getCurrentPassword().isBlank()) {
+                throw SaptException.badRequest("Current password is required to change password.");
+            }
+            if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
+                throw SaptException.badRequest("Current password is incorrect.");
             }
             user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         }
 
         if (request.getMentorId() != null) user.setMentorId(request.getMentorId());
         if (request.getMentorName() != null) user.setMentorName(request.getMentorName());
+        if (request.getRollNo() != null) user.setRollNo(request.getRollNo().trim());
 
         log.info("User profile updated for user {}: {}", userId, user.getEmail());
         return userRepository.save(user);

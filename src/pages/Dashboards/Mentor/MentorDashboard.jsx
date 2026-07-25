@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Users, Award, BookOpen, GraduationCap, TrendingUp,
@@ -10,141 +10,91 @@ import {
   ResponsiveContainer
 } from 'recharts';
 import { useAuth } from '../../../context/AuthContext';
-import { getUsers, getSubmissionsByMentor, getTotalCredits } from '../../../utils/localStorage';
-import { ROLES, STAR_THRESHOLDS, getStars, getAchievementBadge } from '../../../utils/mockData';
+import { mentorApi } from '../../../utils/api';
 import { StatCard, Badge, useToast, Avatar } from '../../../components/ui/UIComponents';
+import { STAR_THRESHOLDS } from '../../../utils/mockData';
 
 export const MentorDashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { showToast, ToastComponent } = useToast();
 
-  // --- Process Mentor Student & Submission Data ---
+  const [dashboardData, setDashboardData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    const fetchStats = async () => {
+      try {
+        const data = await mentorApi.getDashboardStats();
+        if (active && data) {
+          setDashboardData(data);
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error("Failed to load dashboard stats:", err);
+        if (active) setLoading(false);
+      }
+    };
+    fetchStats();
+    return () => { active = false; };
+  }, []);
+
   const {
-    myStudents,
-    mySubmissions,
-    totalCredits,
-    approvedCount,
-    rejectedCount,
-    pendingCount,
-    topStudents,
-    factorCounts,
-    skillTrendData,
-    recentPending
-  } = useMemo(() => {
-    const allUsers = getUsers();
-    const allMentorSubmissions = getSubmissionsByMentor(user.id);
-
-    // Get students assigned to this mentor
-    const assignedStudents = allUsers.filter(
-      u => u.role === ROLES.STUDENT && u.mentorId === user.id
-    );
-
-    const approved = allMentorSubmissions.filter(s => s.status === 'approved');
-    const rejected = allMentorSubmissions.filter(s => s.status === 'rejected');
-    const pending = allMentorSubmissions.filter(s => s.status === 'pending');
-
-    // Calculate total credits accumulated by assigned students
-    const totalCr = assignedStudents.reduce((sum, s) => sum + getTotalCredits(s.id), 0);
-
-    // Calculate individual student stats
-    const studentPerformance = assignedStudents.map(student => {
-      const studentSubs = approved.filter(s => s.studentId === student.id);
-      const cr = studentSubs.reduce((sum, s) => sum + (s.credits || 0), 0);
-      const act = studentSubs.length;
-
-      // Placement factors
-      const hackathons = studentSubs.filter(s => ['Hackathons', 'Ideathons', 'Coding Competitions'].includes(s.type)).length;
-      const certifications = studentSubs.filter(s => ['Certifications & Online Courses', 'Workshops', 'Seminars & Guest Lectures'].includes(s.type)).length;
-      const internships = studentSubs.filter(s => s.type === 'Internships').length;
-      const projects = studentSubs.filter(s => ['Mini Projects', 'Major Projects', 'Freelancing & Real-World Work'].includes(s.type)).length;
-      const publications = studentSubs.filter(s => ['Conferences', 'Research & Publications'].includes(s.type)).length;
-
-      return {
-        ...student,
-        credits: cr,
-        activitiesCount: act,
-        starsCount: getStars(cr),
-        badge: getAchievementBadge(getStars(cr)),
-        factors: { hackathons, certifications, internships, projects, publications }
-      };
-    });
-
-    // Sort Top Students by total credits
-    const topStus = [...studentPerformance]
-      .sort((a, b) => b.credits - a.credits)
-      .slice(0, 3);
-
-    // Placement Factors Count for Charts
-    const factors = {
+    totalStudents = 0,
+    totalCredits = 0,
+    approvedCount = 0,
+    rejectedCount = 0,
+    pendingCount = 0,
+    successRate = 0,
+    topStudents = [],
+    factorCounts = {
       'Hackathons': 0,
       'Certifications': 0,
       'Internships': 0,
       'Projects': 0,
       'Publications': 0,
-    };
-    approved.forEach(sub => {
-      if (['Hackathons', 'Ideathons', 'Coding Competitions'].includes(sub.type)) {
-        factors['Hackathons']++;
-      } else if (['Certifications & Online Courses', 'Workshops', 'Seminars & Guest Lectures'].includes(sub.type)) {
-        factors['Certifications']++;
-      } else if (sub.type === 'Internships') {
-        factors['Internships']++;
-      } else if (['Mini Projects', 'Major Projects', 'Freelancing & Real-World Work'].includes(sub.type)) {
-        factors['Projects']++;
-      } else if (['Conferences', 'Research & Publications'].includes(sub.type)) {
-        factors['Publications']++;
-      }
-    });
+    },
+    skillTrendData = [],
+    recentPending = []
+  } = dashboardData || {};
 
-    // Skill acquisition monthly trend
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const monthlyMap = {};
-    months.forEach(m => { monthlyMap[m] = 0; });
-    approved.forEach(sub => {
-      const dateStr = sub.date || sub.submittedAt;
-      if (dateStr) {
-        const monthIndex = new Date(dateStr).getMonth();
-        const mName = months[monthIndex];
-        if (monthlyMap[mName] !== undefined) {
-          monthlyMap[mName]++;
-        }
-      }
-    });
-
-    const trend = months.map((m) => ({
-      month: m,
-      achievements: monthlyMap[m] || 0,
-    }));
-
-    // Get top 5 pending submissions
-    const recentPend = pending.slice(0, 5);
-
-    return {
-      myStudents: studentPerformance,
-      mySubmissions: allMentorSubmissions,
-      totalCredits: totalCr,
-      approvedCount: approved.length,
-      rejectedCount: rejected.length,
-      pendingCount: pending.length,
-      topStudents: topStus,
-      factorCounts: factors,
-      skillTrendData: trend,
-      recentPending: recentPend
-    };
-  }, [user]);
+  const totalSubmissions = approvedCount + rejectedCount + pendingCount;
 
   // --- Recharts colors mapping ---
-  const chartColors = ['#f97316', '#3b82f6', '#10b981', '#8b5cf6', '#ec4899'];
-  const factorsData = Object.entries(factorCounts).map(([name, count], index) => ({
-    name,
-    count,
-    fill: chartColors[index]
-  }));
+  const factorsData = useMemo(() => {
+    const chartColors = ['#f97316', '#3b82f6', '#10b981', '#8b5cf6', '#ec4899'];
+    const entries = [
+      ['Hackathons', factorCounts['Hackathons'] || 0],
+      ['Certifications', factorCounts['Certifications'] || 0],
+      ['Internships', factorCounts['Internships'] || 0],
+      ['Projects', factorCounts['Projects'] || 0],
+      ['Publications', factorCounts['Publications'] || 0],
+    ];
+    return entries.map(([name, count], index) => ({
+      name,
+      count,
+      fill: chartColors[index]
+    }));
+  }, [factorCounts]);
 
   // --- Real-time PDF Report Generator ---
-  const handleDownloadPDF = () => {
+  const handleDownloadPDF = async () => {
     showToast('Generating mentorship performance report PDF... ✓', 'success');
+
+    // Fetch logo and convert to base64 data URI so it works in blank popup windows
+    let logoDataUri = '';
+    try {
+      const resp = await fetch(`${window.location.origin}/spat-logo1.png`);
+      if (resp.ok) {
+        const blob = await resp.blob();
+        logoDataUri = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.readAsDataURL(blob);
+        });
+      }
+    } catch (_) { /* logo not critical */ }
 
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
@@ -300,8 +250,8 @@ export const MentorDashboard = () => {
         <body>
           <div class="header">
             <div class="logo-container">
-              <img src="/spark-logo1.png" style="width: 32px; height: 32px; object-fit: contain; border-radius: 8px;" />
-              <span class="logo-text">SPARK</span>
+              ${logoDataUri ? `<img src="${logoDataUri}" style="width: 32px; height: 32px; object-fit: contain; border-radius: 8px;" />` : ''}
+              <span class="logo-text">SPAT</span>
             </div>
             <div class="college-name">${user.college}</div>
           </div>
@@ -316,8 +266,8 @@ export const MentorDashboard = () => {
 
           <div class="section-title">Mentorship Key Metrics Summary</div>
           <div class="metrics-grid">
-            <div class="metric-card"><p class="metric-value">${myStudents.length}</p><p class="metric-label">Assigned Students</p></div>
-            <div class="metric-card"><p class="metric-value">${mySubmissions.length}</p><p class="metric-label">Total Submissions</p></div>
+            <div class="metric-card"><p class="metric-value">${totalStudents}</p><p class="metric-label">Assigned Students</p></div>
+            <div class="metric-card"><p class="metric-value">${totalSubmissions}</p><p class="metric-label">Total Submissions</p></div>
             <div class="metric-card"><p class="metric-value">${approvedCount}</p><p class="metric-label">Approved Milestones</p></div>
             <div class="metric-card"><p class="metric-value">${totalCredits}</p><p class="metric-label">Total Credits Earned</p></div>
           </div>
@@ -334,27 +284,27 @@ export const MentorDashboard = () => {
             <tbody>
               <tr>
                 <td><strong>Hackathons & Coding Contests</strong></td>
-                <td>${factorCounts['Hackathons']} achievements approved</td>
+                <td>${factorCounts['Hackathons'] || 0} achievements approved</td>
                 <td>Technical Innovation Portfolio</td>
               </tr>
               <tr>
                 <td><strong>Industry Certifications & Courses</strong></td>
-                <td>${factorCounts['Certifications']} modules completed</td>
+                <td>${factorCounts['Certifications'] || 0} modules completed</td>
                 <td>Verified Core Proficiency</td>
               </tr>
               <tr>
                 <td><strong>Corporate Internships</strong></td>
-                <td>${factorCounts['Internships']} placements completed</td>
+                <td>${factorCounts['Internships'] || 0} placements completed</td>
                 <td>Applied Workplace Experience</td>
               </tr>
               <tr>
                 <td><strong>Capstone & Mini Projects</strong></td>
-                <td>${factorCounts['Projects']} projects completed</td>
+                <td>${factorCounts['Projects'] || 0} projects completed</td>
                 <td>Software Delivery Readiness</td>
               </tr>
               <tr>
                 <td><strong>Research & Publications</strong></td>
-                <td>${factorCounts['Publications']} publications</td>
+                <td>${factorCounts['Publications'] || 0} publications</td>
                 <td>Analytical Competency</td>
               </tr>
             </tbody>
@@ -372,13 +322,13 @@ export const MentorDashboard = () => {
               </tr>
             </thead>
             <tbody>
-              ${myStudents.map(stu => `
+              ${topStudents.map(stu => `
                 <tr>
                   <td>${stu.rollNo || '–'}</td>
                   <td><strong>${stu.name}</strong></td>
-                  <td>${stu.activitiesCount} approved (H: ${stu.factors.hackathons}, C: ${stu.factors.certifications}, I: ${stu.factors.internships}, P: ${stu.factors.projects})</td>
-                  <td><span style="color: #ea580c; font-weight: 700;">${stu.credits}</span></td>
-                  <td>${stu.badge} (${stu.starsCount} ★)</td>
+                  <td>${stu.activitiesCount || 0} approved</td>
+                  <td><span style="color: #ea580c; font-weight: 700;">${stu.credits || 0}</span></td>
+                  <td>${stu.badge || 'Beginner'} (${stu.starsCount || 0} ★)</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -386,7 +336,7 @@ export const MentorDashboard = () => {
 
           <div class="footer">
             <div>
-              <p style="margin: 0;">Compiled automatically via SPARK student portal logs.</p>
+              <p style="margin: 0;">Compiled automatically via SPAT student portal logs.</p>
               <p style="margin: 4px 0 0 0;">All achievements reviewed and approved under college bylaws.</p>
             </div>
             <div>
@@ -406,6 +356,17 @@ export const MentorDashboard = () => {
     printWindow.document.write(printContent);
     printWindow.document.close();
   };
+
+  if (loading) {
+    return (
+      <div className="animate-fade-in flex items-center justify-center min-h-[45vh]">
+        <div className="flex flex-col items-center gap-3">
+          <span className="w-10 h-10 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></span>
+          <p className="text-sm font-semibold text-slate-500">Loading dashboard stats...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="animate-fade-in space-y-8 pb-12">
@@ -433,17 +394,17 @@ export const MentorDashboard = () => {
       </div>
 
       {/* Dynamic Key Metrics */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 gap-5">
         <StatCard
           icon={<Users className="w-6 h-6 text-orange-600" />}
           label="My Students"
-          value={myStudents.length}
+          value={totalStudents}
           color="primary"
         />
         <StatCard
           icon={<FileText className="w-6 h-6 text-blue-600" />}
           label="Total Submissions"
-          value={mySubmissions.length}
+          value={totalSubmissions}
           color="blue"
         />
         <StatCard
@@ -469,6 +430,12 @@ export const MentorDashboard = () => {
           label="Total Credits"
           value={totalCredits}
           color="blue"
+        />
+        <StatCard
+          icon={<TrendingUp className="w-6 h-6 text-teal-650" />}
+          label="Success Rate"
+          value={`${successRate}%`}
+          color="green"
         />
       </div>
 

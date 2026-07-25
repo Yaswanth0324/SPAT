@@ -28,16 +28,21 @@ import java.util.List;
 @Configuration
 public class CorsConfig {
 
-    @Value("${sapt.cors.allowed-origins:http://localhost:5173,http://localhost:3000}")
+    @Value("${sapt.cors.allowed-origins:}")
     private String allowedOrigins;
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        // Set allowed origins from environment variable
-        List<String> origins = Arrays.asList(allowedOrigins.split(","));
-        config.setAllowedOrigins(origins);
+        // Always allow localhost wildcards in dev, plus any origins from env
+        List<String> origins = new java.util.ArrayList<>();
+        origins.add("http://localhost:*");
+        origins.add("http://127.0.0.1:*");
+        if (allowedOrigins != null && !allowedOrigins.isBlank()) {
+            origins.addAll(Arrays.asList(allowedOrigins.split(",")));
+        }
+        config.setAllowedOriginPatterns(origins);
 
         // Allowed HTTP methods
         config.setAllowedMethods(Arrays.asList(
@@ -59,7 +64,9 @@ public class CorsConfig {
         config.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/api/**", config);
+        // context-path is /api, so Spring Security sees paths WITHOUT /api prefix
+        // Pattern must be /** to match /auth/login, /colleges/*, etc.
+        source.registerCorsConfiguration("/**", config);
         return source;
     }
 }

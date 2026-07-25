@@ -32,7 +32,7 @@ public class CustomUserDetailsService implements UserDetailsService {
     private final UserRepository userRepository;
 
     /**
-     * Load user by email (used as the username in SPARK).
+     * Load user by email (used as the username in SPAT).
      * Called by Spring Security during authentication.
      *
      * NOTE: There is a naming conflict between:
@@ -43,28 +43,28 @@ public class CustomUserDetailsService implements UserDetailsService {
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
 
-        User sparkUser = userRepository.findByEmail(username)
+        User spatUser = userRepository.findByEmail(username)
                 .orElseThrow(() -> {
                     log.warn("User not found with email: {}", username);
                     return new UsernameNotFoundException("User not found: " + username);
                 });
 
-        if (!sparkUser.isActive()) {
+        if (!spatUser.isActive()) {
             log.warn("Attempt to load deactivated account: {}", username);
             throw new UsernameNotFoundException("Account is deactivated: " + username);
         }
 
         // Use fully-qualified Spring Security User builder to avoid naming conflict
         return org.springframework.security.core.userdetails.User.builder()
-                .username(sparkUser.getEmail())
-                .password(sparkUser.getPasswordHash())           // BCrypt hash from users.password_hash
+                .username(spatUser.getEmail())
+                .password(spatUser.getPasswordHash())           // BCrypt hash from users.password_hash
                 .authorities(Collections.singletonList(
-                        new SimpleGrantedAuthority("ROLE_" + sparkUser.getRole().name())
+                        new SimpleGrantedAuthority("ROLE_" + spatUser.getRole().name())
                 ))
                 .accountExpired(false)
                 .accountLocked(false)
                 .credentialsExpired(false)
-                .disabled(!sparkUser.isActive())
+                .disabled(!spatUser.isActive())
                 .build();
     }
 }

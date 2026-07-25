@@ -2,42 +2,41 @@ package com.sapt.student.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
-import java.time.LocalDateTime;
 
 /**
- * Student - MySQL Entity
- * Links to AuthUser via authUserId for authentication.
- * TODO (Student Team): Add department, batch, mentor reference, etc.
+ * Student mirror table — synced from users table via DataSyncService (JDBC).
+ * This entity is only used for Hibernate schema auto-creation (ddl-auto=update).
+ * Actual data operations use JdbcTemplate directly.
  */
 @Entity
 @Table(name = "students")
-@Data @Builder @NoArgsConstructor @AllArgsConstructor
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class Student {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(name = "id", nullable = false, columnDefinition = "CHAR(36)")
+    private String id;
 
-    /** Foreign key to auth_users table */
-    @Column(nullable = false, unique = true)
-    private Long authUserId;
+    @Column(name = "name", nullable = false)
+    private String name;
 
-    private String fullName;
-    private String rollNumber;
-    private String department;
-    private String batch;
-    private String semester;
-    private Long mentorId;
-    private Integer totalPoints;
+    @Column(name = "email", nullable = false, unique = true)
+    private String email;
 
-    @Column(nullable = false)
-    private boolean active = true;
+    @Column(name = "college_id", columnDefinition = "CHAR(36)")
+    private String collegeId;
 
-    @CreationTimestamp @Column(updatable = false)
-    private LocalDateTime createdAt;
+    @Column(name = "department_id", columnDefinition = "CHAR(36)")
+    private String departmentId;
 
-    @UpdateTimestamp
-    private LocalDateTime updatedAt;
+    @Column(name = "roll_no", length = 50)
+    private String rollNo;
+
+    @Column(name = "mentor_id", columnDefinition = "CHAR(36)")
+    private String mentorId;
+
+    @Column(name = "status", length = 20)
+    private String status;
 }

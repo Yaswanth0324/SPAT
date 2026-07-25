@@ -2,38 +2,35 @@ package com.sapt.mentor.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
-import java.time.LocalDateTime;
 
 /**
- * Mentor - MySQL Entity
- * TODO (Mentor Team): Add college reference, department, assigned students list, etc.
+ * Mentor mirror table — synced from users table via DataSyncService (JDBC).
+ * This entity is only used for Hibernate schema auto-creation (ddl-auto=update).
+ * Actual data operations use JdbcTemplate directly.
  */
 @Entity
 @Table(name = "mentors")
-@Data @Builder @NoArgsConstructor @AllArgsConstructor
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class Mentor {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(name = "id", nullable = false, columnDefinition = "CHAR(36)")
+    private String id;
 
-    @Column(nullable = false, unique = true)
-    private Long authUserId;
+    @Column(name = "name", nullable = false)
+    private String name;
 
-    private String fullName;
-    private String employeeId;
-    private String department;
-    private Long collegeId;
-    private Long hodId;
+    @Column(name = "email", nullable = false, unique = true)
+    private String email;
 
-    @Column(nullable = false)
-    private boolean active = true;
+    @Column(name = "college_id", columnDefinition = "CHAR(36)")
+    private String collegeId;
 
-    @CreationTimestamp @Column(updatable = false)
-    private LocalDateTime createdAt;
+    @Column(name = "department_id", columnDefinition = "CHAR(36)")
+    private String departmentId;
 
-    @UpdateTimestamp
-    private LocalDateTime updatedAt;
+    @Column(name = "status", length = 20)
+    private String status;
 }

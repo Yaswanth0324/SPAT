@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
  * ============================================================
  * Notification — In-System Notification Record
  * ============================================================
- * Stores all notifications sent within the SPARK system.
+ * Stores all notifications sent within the SPAT system.
  * Used for the notification inbox/bell in each dashboard.
  *
  * recipient_id → users.id (who receives the notification)

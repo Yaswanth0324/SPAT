@@ -23,10 +23,11 @@ const Navbar = () => {
   };
 
   const navLinks = [
-    { href: '#hero', label: 'Home' },
-    { href: '#features', label: 'About' },
-    { href: '#contact', label: 'Contact' },
-    { href: '#reviews', label: 'Reviews' },
+    { href: '/', label: 'Home' },
+    { href: '/#flow', label: 'About' },
+    { href: '/#contact', label: 'Contact' },
+    { href: '/#reviews', label: 'Reviews' },
+    { href: '/help', label: 'Help' },
   ];
 
   const navBg = isDark
@@ -49,23 +50,36 @@ const Navbar = () => {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-3">
-            <img src={isDark ? "/spark-logo1.png" : "/spark-logo2.png"} className="w-10 h-10 object-contain rounded-xl shadow-glow" alt="SPARK Logo" />
-            <span className="font-display font-bold text-xl" style={{ color: logoTextColor }}>SPARK</span>
+            <img src={isDark ? "/spat-logo1.png" : "/spat-logo2.png"} className="w-10 h-10 object-contain rounded-xl shadow-glow" alt="SPAT Logo" />
+            <span className="font-display font-bold text-xl" style={{ color: logoTextColor }}>SPAT</span>
           </Link>
 
           {/* Desktop Nav */}
           <div className="hidden md:flex items-center gap-6">
             {navLinks.map(l => (
-              <a
-                key={l.href}
-                href={l.href}
-                className="text-sm font-medium transition-colors"
-                style={{ color: linkColor }}
-                onMouseEnter={e => e.currentTarget.style.color = linkHoverColor}
-                onMouseLeave={e => e.currentTarget.style.color = linkColor}
-              >
-                {l.label}
-              </a>
+              l.href.startsWith('/#') || l.href.startsWith('#') ? (
+                <a
+                  key={l.href}
+                  href={l.href}
+                  className="text-sm font-medium transition-colors"
+                  style={{ color: linkColor }}
+                  onMouseEnter={e => e.currentTarget.style.color = linkHoverColor}
+                  onMouseLeave={e => e.currentTarget.style.color = linkColor}
+                >
+                  {l.label}
+                </a>
+              ) : (
+                <Link
+                  key={l.href}
+                  to={l.href}
+                  className="text-sm font-medium transition-colors"
+                  style={{ color: linkColor }}
+                  onMouseEnter={e => e.currentTarget.style.color = linkHoverColor}
+                  onMouseLeave={e => e.currentTarget.style.color = linkColor}
+                >
+                  {l.label}
+                </Link>
+              )
             ))}
           </div>
 
@@ -102,15 +116,27 @@ const Navbar = () => {
           style={{ background: isDark ? 'rgba(20,8,2,0.95)' : 'rgba(255,247,237,0.97)', borderColor: navBorder }}
         >
           {navLinks.map(l => (
-            <a
-              key={l.href}
-              href={l.href}
-              onClick={() => setMenuOpen(false)}
-              className="block py-2 text-sm font-medium transition-colors"
-              style={{ color: linkColor }}
-            >
-              {l.label}
-            </a>
+            l.href.startsWith('/#') || l.href.startsWith('#') ? (
+              <a
+                key={l.href}
+                href={l.href}
+                onClick={() => setMenuOpen(false)}
+                className="block py-2 text-sm font-medium transition-colors"
+                style={{ color: linkColor }}
+              >
+                {l.label}
+              </a>
+            ) : (
+              <Link
+                key={l.href}
+                to={l.href}
+                onClick={() => setMenuOpen(false)}
+                className="block py-2 text-sm font-medium transition-colors"
+                style={{ color: linkColor }}
+              >
+                {l.label}
+              </Link>
+            )
           ))}
           <button onClick={handleGetStarted} className="btn-primary w-full justify-center mt-2">
             Get Started
