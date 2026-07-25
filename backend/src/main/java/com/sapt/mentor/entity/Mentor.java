@@ -1,18 +1,36 @@
 package com.sapt.mentor.entity;
 
+import jakarta.persistence.*;
+import lombok.*;
+
 /**
- * @deprecated The separate `mentors` table no longer exists.
- *
- * All mentor data is now stored in the unified `users` table
- * with role = MENTOR. Fields (phone, department, collegeName, etc.)
- * are columns on the User entity.
- *
- * Succession requests are handled by {@link SuccessionRequest} entity
- * (stored in the `succession_requests` table).
- *
- * Use {@link com.sapt.auth.entity.User} with role filter MENTOR.
+ * Mentor mirror table — synced from users table via DataSyncService (JDBC).
+ * This entity is only used for Hibernate schema auto-creation (ddl-auto=update).
+ * Actual data operations use JdbcTemplate directly.
  */
-@Deprecated(since = "2.0", forRemoval = true)
+@Entity
+@Table(name = "mentors")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class Mentor {
-    // REMOVED — use com.sapt.auth.entity.User (role = MENTOR)
+
+    @Id
+    @Column(name = "id", nullable = false, columnDefinition = "CHAR(36)")
+    private String id;
+
+    @Column(name = "name", nullable = false)
+    private String name;
+
+    @Column(name = "email", nullable = false, unique = true)
+    private String email;
+
+    @Column(name = "college_id", columnDefinition = "CHAR(36)")
+    private String collegeId;
+
+    @Column(name = "department_id", columnDefinition = "CHAR(36)")
+    private String departmentId;
+
+    @Column(name = "status", length = 20)
+    private String status;
 }

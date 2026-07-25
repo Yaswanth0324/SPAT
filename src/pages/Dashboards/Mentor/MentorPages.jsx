@@ -1,60 +1,143 @@
 import { useState, useEffect } from 'react';
-import { Users, FileText, CheckCircle, XCircle, Eye, Download, BookOpen, Link as LinkIcon, UserCheck } from 'lucide-react';
+import { Users, FileText, CheckCircle, XCircle, Eye, Download, BookOpen, Link as LinkIcon, UserCheck, UploadCloud } from 'lucide-react';
 import { getUsers, getSubmissionsByMentor, updateSubmission, getTotalCredits, getLogsByStudent, getSubmissions, getLogsByMentor, updateLog, updateUser } from '../../../utils/localStorage';
 import { ROLES } from '../../../utils/mockData';
 import { useAuth } from '../../../context/AuthContext';
 import { Modal, Badge, useToast, EmptyState, Avatar } from '../../../components/ui/UIComponents';
-import { apiGetUsersByMentor, apiUpdateUserStatus } from '../../../utils/api';
-
+import { apiGetUsersByMentor, apiUpdateUserStatus, mentorApi } from '../../../utils/api';
+import tunnelConfig from '../../../utils/tunnel.json';
 
 // =====================================================================
-// File Preview Placeholder (file viewing requires backend file-serving)
+// Inline File Viewer (supports Image, PDF, and Google Docs Embedded)
 // =====================================================================
-const FilePreviewPlaceholder = ({ title, type }) => (
-  <div className="flex flex-col items-center justify-center min-h-[40vh] gap-4 p-8 bg-slate-50 dark:bg-dark-900 rounded-2xl border-2 border-dashed border-slate-200 dark:border-dark-700">
-    <div className="p-4 rounded-2xl bg-orange-100 dark:bg-orange-950/40">
-      <BookOpen className="w-10 h-10 text-orange-500" />
+const InlineFileViewer = ({ fileUrl, filename, title }) => {
+  const ext = filename ? filename.split('.').pop().toLowerCase() : '';
+  const isImg = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(ext);
+  const isPdf = ext === 'pdf';
+  const isOffice = ['ppt', 'pptx', 'doc', 'docx', 'xls', 'xlsx'].includes(ext);
+  
+  const downloadUrl = `/api/submission/files/download?path=${encodeURIComponent(fileUrl)}`;
+  // Route requests through the secure public tunnel so Google docs viewer can pull the content from localhost
+  const absoluteDownloadUrl = (tunnelConfig?.url || window.location.origin) + downloadUrl;
+
+  if (fileUrl === '#' || !fileUrl) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[45vh] gap-4 p-8 bg-slate-50 dark:bg-dark-900 rounded-2xl border border-slate-200 dark:border-dark-700 w-full">
+        <div className="p-4 rounded-2xl bg-red-100 dark:bg-red-950/40">
+          <XCircle className="w-10 h-10 text-red-500 animate-pulse" />
+        </div>
+        <div className="text-center max-w-md bg-transparent">
+          <p className="font-bold text-slate-800 dark:text-white text-sm">{filename}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">
+            ⚠️ <strong>Document Not Found:</strong> No document payload was stored for this path.
+          </p>
+          <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+            This is a placeholder entry created when MongoDB was offline or unreachable during the student's upload. Please ask the student to re-submit this activity.
+          </p>
+        </div>
+      </div>
+    );
+  }
+  
+  if (isImg) {
+    return (
+      <div className="flex flex-col items-center justify-center p-4 bg-slate-900 rounded-2xl border border-slate-800 w-full max-h-[75vh] overflow-y-auto">
+        <img src={downloadUrl} alt={title} className="max-h-[60vh] w-auto object-contain rounded-lg shadow-2xl" />
+        <p className="text-slate-400 text-xs mt-4 font-bold uppercase tracking-wider">📷 Image: {filename}</p>
+      </div>
+    );
+  }
+  
+  if (isPdf || isOffice) {
+    const officeViewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(absoluteDownloadUrl)}&embedded=true`;
+    
+    return (
+      <div className="flex flex-col w-full h-[70vh] rounded-2xl overflow-hidden border border-slate-200 dark:border-dark-750 bg-white">
+        <div className="bg-slate-50 dark:bg-dark-900 border-b border-slate-200 dark:border-dark-750 px-4 py-2 flex items-center justify-between shrink-0">
+          <span className="text-xs text-slate-700 dark:text-slate-350 font-semibold truncate max-w-[70%]">
+            📄 Original Document: <strong>{filename}</strong>
+          </span>
+          <a 
+            href={downloadUrl} 
+            download={filename} 
+            className="text-xs text-primary-600 hover:text-primary-700 underline font-bold"
+          >
+            Download Original
+          </a>
+        </div>
+        <iframe src={officeViewerUrl} className="w-full flex-1" title={title} frameBorder="0" />
+      </div>
+    );
+  }
+
+  // Fallback
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[30vh] gap-4 p-6 bg-slate-50 dark:bg-dark-900 rounded-2xl border border-slate-200 dark:border-dark-700 w-full">
+      <FileText className="w-10 h-10 text-blue-500" />
+      <div className="text-center">
+        <p className="font-bold text-slate-800 dark:text-white text-sm">{filename}</p>
+        <p className="text-xs text-slate-500 mt-1">This file type cannot be previewed inline. Please download to view.</p>
+        <a href={downloadUrl} download={filename} className="mt-3 btn-primary text-xs py-1.5 px-4 justify-center">
+          📥 Download File
+        </a>
+      </div>
     </div>
-    <div className="text-center">
-      <p className="font-bold text-slate-800 dark:text-white text-sm">{title}</p>
-      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-xs">
-        {type === 'presentation' ? 'Presentation' : 'Document'} preview will be available once backend file-serving is connected.
-      </p>
-    </div>
-  </div>
-);
+  );
+};
 
 export const MentorStudents = () => {
   const { user } = useAuth();
   const [selected, setSelected] = useState(null);
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [studentSubmissions, setStudentSubmissions] = useState([]);
+  const [studentLogs, setStudentLogs] = useState([]);
+  const [loadingDetails, setLoadingDetails] = useState(false);
 
   useEffect(() => {
     let active = true;
     const fetchStudents = async () => {
-      if (!user?.id) return;
       try {
-        const list = await apiGetUsersByMentor(user.id);
-        const filtered = list
-          .filter(u => u.role === 'STUDENT' && u.status && u.status.toUpperCase() === 'APPROVED')
-          .map(u => ({
-            ...u,
-            status: 'approved',
-            college: u.collegeName,
-            department: u.departmentName
-          }));
-        if (active) {
-          setStudents(filtered);
+        const list = await mentorApi.getStudents();
+        if (active && list) {
+          setStudents(list);
           setLoading(false);
         }
       } catch (err) {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     };
     fetchStudents();
     return () => { active = false; };
-  }, [user?.id]);
+  }, []);
+
+  useEffect(() => {
+    if (!selected?.id) {
+      setStudentSubmissions([]);
+      setStudentLogs([]);
+      return;
+    }
+    let active = true;
+    const loadDetails = async () => {
+      setLoadingDetails(true);
+      try {
+        const [subs, allLogs] = await Promise.all([
+          mentorApi.getStudentSubmissions(selected.id),
+          mentorApi.getLogs()
+        ]);
+        if (active) {
+          setStudentSubmissions(subs || []);
+          setStudentLogs((allLogs || []).filter(l => l.studentId === selected.id));
+        }
+      } catch (err) {
+        console.error("Failed to load student details:", err);
+      } finally {
+        if (active) setLoadingDetails(false);
+      }
+    };
+    loadDetails();
+    return () => { active = false; };
+  }, [selected?.id]);
 
   return (
     <div className="animate-fade-in">
@@ -80,14 +163,14 @@ export const MentorStudents = () => {
             </thead>
             <tbody>
               {students.map(s => {
-                const credits = getTotalCredits(s.id);
+                const credits = s.credits;
                 return (
                   <tr key={s.id} className="hover:bg-slate-50 dark:hover:bg-dark-700 transition-colors">
                     <td className="table-td flex items-center gap-3">
                       <Avatar name={s.name} src={s.avatar} size="sm" />
                       <span className="font-medium text-slate-900 dark:text-white">{s.name}</span>
                     </td>
-                    <td className="table-td text-slate-500 dark:text-slate-400 font-semibold">{s.rollNo || 'â€“'}</td>
+                    <td className="table-td text-slate-500 dark:text-slate-400 font-semibold">{s.rollNo || '—'}</td>
                     <td className="table-td">
                       <Badge variant="purple">{credits} pts</Badge>
                     </td>
@@ -109,7 +192,7 @@ export const MentorStudents = () => {
 
       <Modal isOpen={!!selected} onClose={() => setSelected(null)} title="Student Details">
         {selected && (() => {
-          const credits = getTotalCredits(selected.id);
+          const credits = selected.credits;
           return (
             <div className="space-y-4">
               <div className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-dark-850 rounded-xl">
@@ -131,8 +214,9 @@ export const MentorStudents = () => {
 
               <div className="flex gap-3">
                 <button
+                  disabled={loadingDetails}
                   onClick={() => {
-                    const studentSubs = getSubmissions().filter(s => s.studentId === selected.id && s.status === 'approved');
+                    const studentSubs = studentSubmissions.filter(s => s.status?.toUpperCase() === 'APPROVED');
                     const printWindow = window.open('', '_blank');
                     if (!printWindow) return;
                     const content = `
@@ -182,12 +266,12 @@ export const MentorStudents = () => {
                             <tbody>
                               ${studentSubs.map(s => `
                                 <tr>
-                                  <td>${s.date || s.submittedAt || 'â€“'}</td>
+                                  <td>${s.date || s.submittedAt || '—'}</td>
                                   <td><strong>${s.title}</strong></td>
                                   <td>${s.type}</td>
-                                  <td>${s.achievementType || 'â€“'}</td>
+                                  <td>${s.achievementType || '—'}</td>
                                   <td>${s.credits || 0}</td>
-                                  <td>${s.review || 'â€“'}</td>
+                                  <td>${s.review || '—'}</td>
                                 </tr>
                               `).join('')}
                               ${studentSubs.length === 0 ? '<tr><td colspan="6" style="text-align: center;">No achievements uploaded yet.</td></tr>' : ''}
@@ -200,14 +284,14 @@ export const MentorStudents = () => {
                     printWindow.document.write(content);
                     printWindow.document.close();
                   }}
-                  className="btn-success flex-1 justify-center py-2.5 text-xs flex items-center gap-1.5"
+                  className="btn-success flex-1 justify-center py-2.5 text-xs flex items-center gap-1.5 disabled:opacity-50"
                 >
-                  <Download className="w-4 h-4" /> Download Report
+                  <Download className="w-4 h-4" /> {loadingDetails ? 'Loading...' : 'Download Report'}
                 </button>
 
                 <button
+                  disabled={loadingDetails}
                   onClick={() => {
-                    const studentLogs = getLogsByStudent(selected.id);
                     const printWindow = window.open('', '_blank');
                     if (!printWindow) return;
                     const content = `
@@ -256,7 +340,7 @@ export const MentorStudents = () => {
                                   <td>${l.date}</td>
                                   <td><strong>${l.title}</strong></td>
                                   <td>${l.description}</td>
-                                  <td>${l.links ? `<a href="${l.links}" target="_blank" style="color: #3b82f6; text-decoration: underline;">${l.links}</a>` : 'â€“'}</td>
+                                  <td>${l.links ? `<a href="${l.links}" target="_blank" style="color: #3b82f6; text-decoration: underline;">${l.links}</a>` : '—'}</td>
                                 </tr>
                               `).join('')}
                               ${studentLogs.length === 0 ? '<tr><td colspan="4" style="text-align: center;">No daily logs submitted yet.</td></tr>' : ''}
@@ -269,9 +353,9 @@ export const MentorStudents = () => {
                     printWindow.document.write(content);
                     printWindow.document.close();
                   }}
-                  className="btn-secondary flex-1 justify-center py-2.5 text-xs flex items-center gap-1.5"
+                  className="btn-secondary flex-1 justify-center py-2.5 text-xs flex items-center gap-1.5 disabled:opacity-50"
                 >
-                  <Download className="w-4 h-4" /> Download Logs
+                  <Download className="w-4 h-4" /> {loadingDetails ? 'Loading...' : 'Download Logs'}
                 </button>
               </div>
             </div>
@@ -286,34 +370,69 @@ export const MentorStudents = () => {
 export const MentorSubmissions = () => {
   const { user } = useAuth();
   const { showToast, ToastComponent } = useToast();
-  const [submissions, setSubmissions] = useState(() => getSubmissionsByMentor(user.id));
+  const [submissions, setSubmissions] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [reviewModal, setReviewModal] = useState(null);
   const [selectedDocs, setSelectedDocs] = useState(null);
   const [fullscreenDoc, setFullscreenDoc] = useState(null);
   const [review, setReview] = useState({ text: '' });
 
-  const handleAction = (id, action, submission) => {
-    const credits = action === 'approved' ? (submission?.suggestedCredits || 0) : 0;
-    updateSubmission(id, { status: action, credits });
-    setSubmissions(prev => prev.map(s => s.id === id ? { ...s, status: action, credits } : s));
-    showToast(`Submission ${action}`, action === 'approved' ? 'success' : 'error');
+  useEffect(() => {
+    let active = true;
+    const loadSubmissions = async () => {
+      try {
+        const list = await mentorApi.getPendingSubmissions();
+        if (active && list) {
+          setSubmissions(list);
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error("Failed to load submissions:", err);
+        if (active) setLoading(false);
+      }
+    };
+    loadSubmissions();
+    return () => { active = false; };
+  }, []);
+
+  const handleAction = async (id, action, submission) => {
+    try {
+      const credits = action === 'approved' ? (submission?.suggestedCredits || 0) : 0;
+      if (action === 'approved') {
+        await mentorApi.approveSubmission(id, "Approved", credits);
+      } else {
+        await mentorApi.rejectSubmission(id, "Rejected");
+      }
+      setSubmissions(prev => prev.filter(s => s.id !== id));
+      showToast(`Submission ${action}`, 'success');
+    } catch (err) {
+      showToast(err.message || 'Action failed', 'error');
+    }
   };
 
-  const handleReview = () => {
-    const credits = reviewModal.suggestedCredits || 0;
-    updateSubmission(reviewModal.id, { review: review.text, credits, status: 'approved' });
-    setSubmissions(prev => prev.map(s => s.id === reviewModal.id ? { ...s, review: review.text, credits, status: 'approved' } : s));
-    showToast('Review submitted and approved!', 'success');
-    setReviewModal(null);
-    setReview({ text: '' });
+  const handleReview = async () => {
+    try {
+      const credits = reviewModal.suggestedCredits || 0;
+      await mentorApi.approveSubmission(reviewModal.id, review.text, credits);
+      setSubmissions(prev => prev.filter(s => s.id !== reviewModal.id));
+      showToast('Review submitted and approved!', 'success');
+      setReviewModal(null);
+      setReview({ text: '' });
+    } catch (err) {
+      showToast(err.message || 'Review failed', 'error');
+    }
   };
 
-  const handleReviewReject = () => {
-    updateSubmission(reviewModal.id, { review: review.text, credits: 0, status: 'rejected' });
-    setSubmissions(prev => prev.map(s => s.id === reviewModal.id ? { ...s, review: review.text, credits: 0, status: 'rejected' } : s));
-    showToast('Review submitted and rejected!', 'error');
-    setReviewModal(null);
-    setReview({ text: '' });
+  const handleReviewReject = async () => {
+    try {
+      await mentorApi.rejectSubmission(reviewModal.id, review.text);
+      setSubmissions(prev => prev.filter(s => s.id !== reviewModal.id));
+      showToast('Review submitted and rejected!', 'error');
+      setReviewModal(null);
+      setReview({ text: '' });
+    } catch (err) {
+      showToast(err.message || 'Review failed', 'error');
+    }
   };
 
   const statusColor = { approved: 'green', rejected: 'red', pending: 'yellow' };
@@ -326,7 +445,9 @@ export const MentorSubmissions = () => {
         <p className="text-slate-500 dark:text-slate-400 mt-1">Review student activity submissions</p>
       </div>
 
-      {submissions.length === 0 ? (
+      {loading ? (
+        <div className="card flex items-center justify-center p-8">Loading submissions...</div>
+      ) : submissions.length === 0 ? (
         <div className="card"><EmptyState icon={<FileText className="w-12 h-12" />} title="No submissions yet" /></div>
       ) : (
         <div className="card p-0 overflow-hidden">
@@ -444,18 +565,35 @@ export const MentorSubmissions = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Certificate File</p>
-                      <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 mt-0.5">ðŸ“„ {selectedDocs.certificateFile}</p>
+                      <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 mt-0.5">📄 {selectedDocs.certificateFile}</p>
                     </div>
                     <Badge variant="blue">Verified</Badge>
                   </div>
-                  <div className="border border-slate-200 dark:border-dark-700 rounded-lg overflow-hidden max-h-48 flex justify-center bg-slate-100 dark:bg-dark-900 cursor-pointer" onClick={() => setFullscreenDoc({ type: 'certificate', file: selectedDocs.certificateFile, title: selectedDocs.title })}>
-                    <img src={`/${selectedDocs.certificateFile}`} alt="Certificate Preview" className="h-full object-contain max-h-48 w-auto hover:scale-105 transition-transform duration-300" />
+                  <div 
+                    className="border border-slate-200 dark:border-dark-700 rounded-lg overflow-hidden max-h-48 flex justify-center bg-slate-100 dark:bg-dark-900 cursor-pointer" 
+                    onClick={() => setFullscreenDoc({ file: selectedDocs.fileUrl, name: selectedDocs.certificateFile, title: selectedDocs.title })}
+                  >
+                    {(() => {
+                      const isCertImage = selectedDocs.certificateFile.toLowerCase().endsWith('.png') ||
+                                          selectedDocs.certificateFile.toLowerCase().endsWith('.jpg') ||
+                                          selectedDocs.certificateFile.toLowerCase().endsWith('.jpeg') ||
+                                          selectedDocs.certificateFile.toLowerCase().endsWith('.webp');
+                      if (isCertImage) {
+                        return <img src={`/api/submission/files/download?path=${encodeURIComponent(selectedDocs.fileUrl)}`} alt="Certificate Preview" className="h-full object-contain max-h-48 w-auto hover:scale-105 transition-transform duration-300" />;
+                      }
+                      return (
+                        <div className="flex flex-col items-center justify-center p-6 bg-slate-50 dark:bg-dark-900 rounded-lg min-h-[120px] w-full">
+                          <FileText className="w-8 h-8 text-blue-500 mb-2 animate-pulse" />
+                          <span className="text-xs text-slate-500 font-medium">Click to view Certificate PDF / Document</span>
+                        </div>
+                      );
+                    })()}
                   </div>
                   <button
-                    onClick={() => setFullscreenDoc({ type: 'certificate', file: selectedDocs.certificateFile, title: selectedDocs.title })}
+                    onClick={() => setFullscreenDoc({ file: selectedDocs.fileUrl, name: selectedDocs.certificateFile, title: selectedDocs.title })}
                     className="w-full mt-1 btn-secondary text-xs py-1.5 justify-center flex items-center gap-1.5"
                   >
-                    ðŸ” View Fullscreen
+                    🔍 View Document
                   </button>
                 </div>
               )}
@@ -464,18 +602,24 @@ export const MentorSubmissions = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Presentation File</p>
-                      <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 mt-0.5">ðŸ“Š {selectedDocs.presentationFile}</p>
+                      <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 mt-0.5">📊 {selectedDocs.presentationFile}</p>
                     </div>
                     <Badge variant="purple">PowerPoint</Badge>
                   </div>
-                  <div className="border border-slate-200 dark:border-dark-700 rounded-lg overflow-hidden max-h-48 flex justify-center bg-slate-100 dark:bg-dark-900 cursor-pointer" onClick={() => setFullscreenDoc({ type: 'presentation', file: selectedDocs.presentationFile, title: selectedDocs.title })}>
-                    <img src={`/${selectedDocs.presentationFile}`} alt="Presentation Preview" className="h-full object-contain max-h-48 w-auto hover:scale-105 transition-transform duration-300" />
+                  <div 
+                    className="border border-slate-200 dark:border-dark-700 rounded-lg overflow-hidden max-h-48 flex justify-center bg-slate-100 dark:bg-dark-900 cursor-pointer"
+                    onClick={() => setFullscreenDoc({ file: selectedDocs.presentationUrl, name: selectedDocs.presentationFile, title: selectedDocs.title })}
+                  >
+                    <div className="flex flex-col items-center justify-center p-6 bg-slate-50 dark:bg-dark-900 rounded-lg min-h-[120px] w-full">
+                      <UploadCloud className="w-8 h-8 text-purple-500 mb-2 animate-bounce-subtle" />
+                      <span className="text-xs text-slate-500 font-medium">PowerPoint Presentation (Click to View)</span>
+                    </div>
                   </div>
                   <button
-                    onClick={() => setFullscreenDoc({ type: 'presentation', file: selectedDocs.presentationFile, title: selectedDocs.title })}
+                    onClick={() => setFullscreenDoc({ file: selectedDocs.presentationUrl, name: selectedDocs.presentationFile, title: selectedDocs.title })}
                     className="w-full mt-1 btn-secondary text-xs py-1.5 justify-center flex items-center gap-1.5"
                   >
-                    ðŸ” View slides
+                    🔍 View Slides
                   </button>
                 </div>
               )}
@@ -484,18 +628,24 @@ export const MentorSubmissions = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Project Document</p>
-                      <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 mt-0.5">ðŸ“ {selectedDocs.documentFile}</p>
+                      <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 mt-0.5">📄 {selectedDocs.documentFile}</p>
                     </div>
                     <Badge variant="blue">Document</Badge>
                   </div>
-                  <div className="border border-slate-200 dark:border-dark-700 rounded-lg overflow-hidden max-h-48 flex justify-center bg-slate-100 dark:bg-dark-900 cursor-pointer" onClick={() => setFullscreenDoc({ type: 'document', file: selectedDocs.documentFile, title: selectedDocs.title })}>
-                    <img src={`/${selectedDocs.documentFile}`} alt="Document Preview" className="h-full object-contain max-h-48 w-auto hover:scale-105 transition-transform duration-300" />
+                  <div 
+                    className="border border-slate-200 dark:border-dark-700 rounded-lg overflow-hidden max-h-48 flex justify-center bg-slate-100 dark:bg-dark-900 cursor-pointer"
+                    onClick={() => setFullscreenDoc({ file: selectedDocs.documentUrl, name: selectedDocs.documentFile, title: selectedDocs.title })}
+                  >
+                    <div className="flex flex-col items-center justify-center p-6 bg-slate-50 dark:bg-dark-900 rounded-lg min-h-[120px] w-full">
+                      <BookOpen className="w-8 h-8 text-emerald-500 mb-2" />
+                      <span className="text-xs text-slate-500 font-medium">Project Sheet / Document (Click to View)</span>
+                    </div>
                   </div>
                   <button
-                    onClick={() => setFullscreenDoc({ type: 'document', file: selectedDocs.documentFile, title: selectedDocs.title })}
+                    onClick={() => setFullscreenDoc({ file: selectedDocs.documentUrl, name: selectedDocs.documentFile, title: selectedDocs.title })}
                     className="w-full mt-1 btn-secondary text-xs py-1.5 justify-center flex items-center gap-1.5"
                   >
-                    ðŸ” View Pages
+                    🔍 View Document
                   </button>
                 </div>
               )}
@@ -506,21 +656,13 @@ export const MentorSubmissions = () => {
 
       {/* Fullscreen Document Viewer Modal */}
       <Modal isOpen={!!fullscreenDoc} onClose={() => setFullscreenDoc(null)} title="Fullscreen Document Viewer" size="xl">
-        {fullscreenDoc && (() => {
-          if (fullscreenDoc.type === 'certificate') {
-            return (
-              <div className="flex flex-col items-center justify-center p-4 bg-slate-900 rounded-2xl border border-slate-800 max-h-[75vh] overflow-y-auto">
-                <img src={`/${fullscreenDoc.file}`} alt="Certificate Fullscreen" className="max-h-[60vh] w-auto object-contain rounded-lg shadow-2xl" />
-                <p className="text-slate-400 text-xs mt-4 font-bold uppercase tracking-wider">ðŸ“„ Certificate: {fullscreenDoc.title}</p>
-              </div>
-            );
-          } else if (fullscreenDoc.type === 'presentation') {
-            return <FilePreviewPlaceholder title={fullscreenDoc.title} type="presentation" />;
-          } else if (fullscreenDoc.type === 'document') {
-            return <FilePreviewPlaceholder title={fullscreenDoc.title} type="document" />;
-          }
-          return null;
-        })()}
+        {fullscreenDoc && (
+          <InlineFileViewer 
+            fileUrl={fullscreenDoc.file} 
+            filename={fullscreenDoc.name} 
+            title={fullscreenDoc.title} 
+          />
+        )}
       </Modal>
     </div>
   );
@@ -530,24 +672,51 @@ export const MentorSubmissions = () => {
 export const MentorLogs = () => {
   const { user } = useAuth();
   const { showToast, ToastComponent } = useToast();
-  const [logs, setLogs] = useState(() => getLogsByMentor(user.id));
+  const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [reviewModal, setReviewModal] = useState(null);
   const [review, setReview] = useState('');
 
-  const handleApprove = () => {
-    updateLog(reviewModal.id, { reviewStatus: 'approved', review });
-    setLogs(prev => prev.map(l => l.id === reviewModal.id ? { ...l, reviewStatus: 'approved', review } : l));
-    showToast('Log reviewed & approved!', 'success');
-    setReviewModal(null);
-    setReview('');
+  useEffect(() => {
+    let active = true;
+    const loadLogs = async () => {
+      try {
+        const list = await mentorApi.getLogs();
+        if (active && list) {
+          setLogs(list);
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error("Failed to load logs:", err);
+        if (active) setLoading(false);
+      }
+    };
+    loadLogs();
+    return () => { active = false; };
+  }, []);
+
+  const handleApprove = async () => {
+    try {
+      await mentorApi.reviewLog(reviewModal.id, 'approved', review);
+      setLogs(prev => prev.map(l => l.id === reviewModal.id ? { ...l, reviewStatus: 'approved', review } : l));
+      showToast('Log reviewed & approved!', 'success');
+      setReviewModal(null);
+      setReview('');
+    } catch (err) {
+      showToast(err.message || 'Failed to approve log', 'error');
+    }
   };
 
-  const handleReject = () => {
-    updateLog(reviewModal.id, { reviewStatus: 'rejected', review });
-    setLogs(prev => prev.map(l => l.id === reviewModal.id ? { ...l, reviewStatus: 'rejected', review } : l));
-    showToast('Log rejected.', 'error');
-    setReviewModal(null);
-    setReview('');
+  const handleReject = async () => {
+    try {
+      await mentorApi.reviewLog(reviewModal.id, 'rejected', review);
+      setLogs(prev => prev.map(l => l.id === reviewModal.id ? { ...l, reviewStatus: 'rejected', review } : l));
+      showToast('Log rejected.', 'error');
+      setReviewModal(null);
+      setReview('');
+    } catch (err) {
+      showToast(err.message || 'Failed to reject log', 'error');
+    }
   };
 
   const statusColor = { approved: 'green', rejected: 'red', pending: 'yellow' };
@@ -560,7 +729,9 @@ export const MentorLogs = () => {
         <p className="text-slate-500 dark:text-slate-400 mt-1">Review daily activity logs submitted by your students</p>
       </div>
 
-      {logs.length === 0 ? (
+      {loading ? (
+        <div className="card flex items-center justify-center p-8">Loading logs...</div>
+      ) : logs.length === 0 ? (
         <div className="card"><EmptyState icon={<BookOpen className="w-12 h-12" />} title="No logs submitted yet" /></div>
       ) : (
         <div className="card p-0 overflow-hidden">

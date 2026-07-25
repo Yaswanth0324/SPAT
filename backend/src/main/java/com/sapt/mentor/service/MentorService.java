@@ -1,14 +1,24 @@
 package com.sapt.mentor.service;
 
-/**
- * MentorService - Interface for mentor business logic.
- * TODO (Mentor Team): Define all mentor operations here.
- */
+import com.sapt.mentor.dto.MentorDashboardDto;
+import com.sapt.mentor.dto.MentorDto;
+import java.util.List;
+
 public interface MentorService {
-    // TODO: MentorDto.MentorProfile getProfile(Long authUserId);
-    // TODO: void updateProfile(Long authUserId, MentorDto.UpdateProfileRequest request);
-    // TODO: List<Student> getAssignedStudents(Long mentorId);
-    // TODO: Page<Submission> getPendingSubmissions(Long mentorId, Pageable pageable);
-    // TODO: void approveSubmission(Long mentorId, Long submissionId);
-    // TODO: void rejectSubmission(Long mentorId, Long submissionId, String reason);
+
+    MentorDto.MentorProfile getProfile(String authUserId);
+    
+    List<MentorDto.StudentSummary> getAssignedStudents(String mentorId);
+    
+    MentorDashboardDto getDashboardStats(String authUserId);
+    
+    void submitSuccessionRequest(String mentorId, MentorDto.SuccessionSubmitRequest request);
+    
+    void cancelSuccessionRequest(String mentorId);
+    
+    List<MentorDto.DailyLogResponse> getAssignedStudentsLogs(String mentorId);
+    
+    void reviewLog(String mentorId, String logId, String status, String remark);
+
+    List<com.sapt.submission.dto.SubmissionDto.SubmissionResponse> getStudentSubmissions(String mentorId, String studentId);
 }

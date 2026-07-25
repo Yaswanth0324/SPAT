@@ -44,7 +44,7 @@ export const HODProfile = () => {
       const base64String = reader.result;
       try {
         const res = await apiUpdateProfile(user.id, { profileImage: base64String });
-        login(res.user);
+        login(res);
         showToast('Profile image updated successfully! ✓', 'success');
       } catch (err) {
         showToast(err.message || 'Failed to upload profile image! ⚠️', 'error');
@@ -63,7 +63,7 @@ export const HODProfile = () => {
 
     try {
       const res = await apiUpdateProfile(user.id, { name, email, phone });
-      login(res.user);
+      login(res);
       setIsEditingInfo(false);
       showToast('Contact details saved successfully! ✓', 'success');
     } catch (err) {
@@ -94,7 +94,7 @@ export const HODProfile = () => {
         password: newPassword,
         currentPassword: currentPassword
       });
-      login(res.user);
+      login(res);
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
@@ -164,7 +164,7 @@ export const HODProfile = () => {
         <div className="lg:col-span-1 space-y-6">
           <div className="card p-6 text-center border border-slate-100 dark:border-dark-800 flex flex-col items-center">
             <div className="relative group mb-4">
-              <Avatar name={user.name} src={user.profileImage} size="xl" />
+              <Avatar name={user.name} src={user.avatar || user.avatarUrl || user.profileImage} size="xl" />
               <label className="absolute bottom-0 right-0 p-2 bg-orange-600 hover:bg-orange-700 text-white rounded-full cursor-pointer shadow-lg transition-transform hover:scale-105">
                 <Upload className="w-4 h-4" />
                 <input

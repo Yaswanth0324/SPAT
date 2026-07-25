@@ -3,6 +3,10 @@ package com.sapt.notification;
 import com.sapt.notification.mail.MailService;
 import com.sapt.notification.otp.OtpMailService;
 import com.sapt.notification.templates.MailTemplates;
+import com.sapt.auth.repository.UserRepository;
+import com.sapt.notification.repository.NotificationRepository;
+import com.sapt.notification.entity.Notification;
+import com.sapt.common.enums.NotificationType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -30,6 +34,26 @@ public class NotificationService {
 
     private final MailService     mailService;
     private final OtpMailService  otpMailService;
+    private final UserRepository userRepository;
+    private final NotificationRepository notificationRepository;
+
+    private void saveNotification(String email, String title, String body, NotificationType type) {
+        userRepository.findByEmail(email).ifPresent(user -> {
+            try {
+                Notification notif = Notification.builder()
+                        .recipientId(user.getId())
+                        .title(title)
+                        .body(body)
+                        .type(type)
+                        .isRead(false)
+                        .build();
+                notificationRepository.save(notif);
+                log.info("Saved notification to database for user: {}", email);
+            } catch (Exception e) {
+                log.error("Failed to save notification to database for {}: {}", email, e.getMessage());
+            }
+        });
+    }
 
     // ============================================================
     // OTP NOTIFICATIONS (used by Auth module)
@@ -46,6 +70,7 @@ public class NotificationService {
     public void sendEmailVerificationOtp(String email, String fullName, String otp) {
         try {
             otpMailService.sendEmailVerificationOtp(email, fullName, otp);
+            saveNotification(email, "Email Verification OTP", "OTP code: " + otp, NotificationType.SYSTEM_ANNOUNCEMENT);
         } catch (Exception e) {
             log.error("Failed to dispatch email verification OTP to {}: {}", email, e.getMessage());
         }
@@ -61,6 +86,7 @@ public class NotificationService {
     public void sendPasswordResetOtp(String email, String otp) {
         try {
             otpMailService.sendPasswordResetOtp(email, otp);
+            saveNotification(email, "Password Reset OTP", "OTP code: " + otp, NotificationType.SYSTEM_ANNOUNCEMENT);
         } catch (Exception e) {
             log.error("Failed to dispatch password reset OTP to {}: {}", email, e.getMessage());
         }
@@ -80,9 +106,10 @@ public class NotificationService {
     @Async
     public void sendWelcomeEmail(String userEmail, String fullName, String role) {
         try {
-            String subject  = "Welcome to SAPT - Student Activity Point Tracker";
+            String subject  = "Welcome to SPAT - Student Activity Point Tracker";
             String htmlBody = MailTemplates.buildWelcomeEmail(fullName, role);
             mailService.sendHtmlMail(userEmail, subject, htmlBody);
+            saveNotification(userEmail, "Welcome to SPAT", "Welcome to SPAT - Student Activity Point Tracker as a " + role, NotificationType.SYSTEM_ANNOUNCEMENT);
             log.info("Welcome email sent to: {}", userEmail);
         } catch (Exception e) {
             log.error("Failed to send welcome email to {}: {}", userEmail, e.getMessage());
@@ -110,10 +137,11 @@ public class NotificationService {
             String studentEmail, String studentName,
             String activityTitle, String newStatus, String remarks) {
         try {
-            String subject  = "SAPT - Your submission has been " + capitalize(newStatus);
+            String subject  = "SPAT - Your submission has been " + capitalize(newStatus);
             String htmlBody = MailTemplates.buildSubmissionStatusEmail(
                     studentName, activityTitle, newStatus, remarks);
             mailService.sendHtmlMail(studentEmail, subject, htmlBody);
+            saveNotification(studentEmail, "Submission Status Updated", "Your submission '" + activityTitle + "' has been " + capitalize(newStatus) + ". Remarks: " + (remarks != null ? remarks : "None"), newStatus.equalsIgnoreCase("approved") ? NotificationType.SUBMISSION_APPROVED : NotificationType.SUBMISSION_REJECTED);
             log.info("Submission status notification sent to: {} | status: {}", studentEmail, newStatus);
         } catch (Exception e) {
             log.error("Failed to send submission notification to {}: {}", studentEmail, e.getMessage());
@@ -135,10 +163,11 @@ public class NotificationService {
             String mentorEmail, String mentorName,
             String studentName, String activityTitle) {
         try {
-            String subject  = "SAPT - New submission from " + studentName + " awaits your review";
+            String subject  = "SPAT - New submission from " + studentName + " awaits your review";
             String htmlBody = MailTemplates.buildMentorNewSubmissionEmail(
                     mentorName, studentName, activityTitle);
             mailService.sendHtmlMail(mentorEmail, subject, htmlBody);
+            saveNotification(mentorEmail, "New Submission Awaiting Review", "A new submission '" + activityTitle + "' from " + studentName + " awaits your review.", NotificationType.SUBMISSION_PENDING);
             log.info("Mentor new submission notification sent to: {}", mentorEmail);
         } catch (Exception e) {
             log.error("Failed to send mentor submission notification to {}: {}", mentorEmail, e.getMessage());

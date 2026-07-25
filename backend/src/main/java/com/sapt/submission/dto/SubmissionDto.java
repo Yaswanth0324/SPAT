@@ -35,12 +35,17 @@ public class SubmissionDto {
     @Data
     public static class CreateSubmissionRequest {
 
-        /** UUID of the ActivityCategory selected */
-        @NotBlank(message = "Category ID is required")
+        /** UUID of the ActivityCategory selected (optional if categoryName is provided) */
         private String categoryId;
 
-        /** UUID of the ActivitySubType selected */
+        /** UUID of the ActivitySubType selected (optional if achievementType is provided) */
         private String subTypeId;
+
+        /** Category name string (used for resolution / custom categories) */
+        private String categoryName;
+
+        /** Achievement / sub-type label (used for resolution / custom sub-types) */
+        private String achievementType;
 
         /** Activity/achievement title */
         @NotBlank(message = "Title is required")
@@ -53,6 +58,18 @@ public class SubmissionDto {
 
         /** Credits the student is claiming (matches sub-type default) */
         private Integer suggestedCredits;
+
+        // --- Supporting Documents metadata ---
+        private String certificateFileName;
+        private String certificateBase64;
+        private String presentationFileName;
+        private String presentationBase64;
+        private String documentFileName;
+        private String documentBase64;
+
+        // --- Resubmission Tracking ---
+        private Boolean isResubmission;
+        private String parentSubmissionId;
     }
 
     // ─── REVIEW REQUEST (Mentor → PUT /submissions/{id}/review) ───────────
@@ -185,5 +202,12 @@ public class SubmissionDto {
         private String name;    // file name
         private String type;    // 'certificate' | 'presentation' | 'document'
         private String url;     // stored URL
+    }
+
+    @Data
+    public static class FileDownloadResponse {
+        private byte[] content;
+        private String contentType;
+        private String filename;
     }
 }
