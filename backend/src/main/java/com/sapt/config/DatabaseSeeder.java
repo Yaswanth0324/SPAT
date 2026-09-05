@@ -60,12 +60,17 @@ public class DatabaseSeeder implements CommandLineRunner {
 
 
 
-        // Fix for email_verified constraint if it exists in MySQL
+        // Fix for email_verified constraint if it exists
         try {
-            jdbcTemplate.execute("ALTER TABLE users MODIFY COLUMN email_verified TINYINT(1) NULL");
+            jdbcTemplate.execute("ALTER TABLE users ALTER COLUMN email_verified DROP NOT NULL");
             log.info("DatabaseSeeder: Modified email_verified to be nullable.");
         } catch (Exception e) {
-            log.debug("DatabaseSeeder: email_verified column skipped or not present: {}", e.getMessage());
+            try {
+                jdbcTemplate.execute("ALTER TABLE users MODIFY COLUMN email_verified TINYINT(1) NULL");
+                log.info("DatabaseSeeder: Modified email_verified to be nullable.");
+            } catch (Exception ex) {
+                log.debug("DatabaseSeeder: email_verified column skipped or not present: {}", ex.getMessage());
+            }
         }
 
         // Cleanup: clear admin_id from database table users if present
@@ -464,59 +469,59 @@ public class DatabaseSeeder implements CommandLineRunner {
      * created with wrong charset by Hibernate DDL.
      */
     private void fixRoleTableCharsets() {
-        log.info("DatabaseSeeder: Fixing role-table charsets to utf8mb4...");
+        log.info("DatabaseSeeder: Ensuring role-tables (hods, mentors, students) exist...");
 
-        // First, drop any wrongly-created tables (idempotent — OK if already dropped)
+        // First, drop any legacy role tables if needed (idempotent)
         for (String table : List.of("hods", "mentors", "students")) {
             try {
-                jdbcTemplate.execute("DROP TABLE IF EXISTS " + table);
+                jdbcTemplate.execute("DROP TABLE IF EXISTS " + table + " CASCADE");
                 log.info("DatabaseSeeder: Dropped existing {} table for recreation.", table);
             } catch (Exception e) {
                 log.debug("DatabaseSeeder: Could not drop {}: {}", table, e.getMessage());
             }
         }
 
-        // Recreate with explicit utf8mb4 charset
+        // Recreate with standard SQL schema
         try {
             jdbcTemplate.execute(
                 "CREATE TABLE IF NOT EXISTS hods (" +
-                "  id VARCHAR(36) CHARACTER SET utf8mb4 NOT NULL," +
-                "  name VARCHAR(255) CHARACTER SET utf8mb4 NOT NULL," +
-                "  email VARCHAR(255) CHARACTER SET utf8mb4 NOT NULL," +
-                "  college_id VARCHAR(36) CHARACTER SET utf8mb4," +
-                "  department_id VARCHAR(36) CHARACTER SET utf8mb4," +
-                "  status VARCHAR(20) CHARACTER SET utf8mb4," +
+                "  id VARCHAR(36) NOT NULL," +
+                "  name VARCHAR(255) NOT NULL," +
+                "  email VARCHAR(255) NOT NULL," +
+                "  college_id VARCHAR(36)," +
+                "  department_id VARCHAR(36)," +
+                "  status VARCHAR(20)," +
                 "  PRIMARY KEY (id)," +
-                "  UNIQUE KEY uk_hods_email (email)" +
-                ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+                "  CONSTRAINT uk_hods_email UNIQUE (email)" +
+                ")"
             );
             jdbcTemplate.execute(
                 "CREATE TABLE IF NOT EXISTS mentors (" +
-                "  id VARCHAR(36) CHARACTER SET utf8mb4 NOT NULL," +
-                "  name VARCHAR(255) CHARACTER SET utf8mb4 NOT NULL," +
-                "  email VARCHAR(255) CHARACTER SET utf8mb4 NOT NULL," +
-                "  college_id VARCHAR(36) CHARACTER SET utf8mb4," +
-                "  department_id VARCHAR(36) CHARACTER SET utf8mb4," +
-                "  status VARCHAR(20) CHARACTER SET utf8mb4," +
+                "  id VARCHAR(36) NOT NULL," +
+                "  name VARCHAR(255) NOT NULL," +
+                "  email VARCHAR(255) NOT NULL," +
+                "  college_id VARCHAR(36)," +
+                "  department_id VARCHAR(36)," +
+                "  status VARCHAR(20)," +
                 "  PRIMARY KEY (id)," +
-                "  UNIQUE KEY uk_mentors_email (email)" +
-                ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+                "  CONSTRAINT uk_mentors_email UNIQUE (email)" +
+                ")"
             );
             jdbcTemplate.execute(
                 "CREATE TABLE IF NOT EXISTS students (" +
-                "  id VARCHAR(36) CHARACTER SET utf8mb4 NOT NULL," +
-                "  name VARCHAR(255) CHARACTER SET utf8mb4 NOT NULL," +
-                "  email VARCHAR(255) CHARACTER SET utf8mb4 NOT NULL," +
-                "  college_id VARCHAR(36) CHARACTER SET utf8mb4," +
-                "  department_id VARCHAR(36) CHARACTER SET utf8mb4," +
-                "  roll_no VARCHAR(50) CHARACTER SET utf8mb4," +
-                "  mentor_id VARCHAR(36) CHARACTER SET utf8mb4," +
-                "  status VARCHAR(20) CHARACTER SET utf8mb4," +
+                "  id VARCHAR(36) NOT NULL," +
+                "  name VARCHAR(255) NOT NULL," +
+                "  email VARCHAR(255) NOT NULL," +
+                "  college_id VARCHAR(36)," +
+                "  department_id VARCHAR(36)," +
+                "  roll_no VARCHAR(50)," +
+                "  mentor_id VARCHAR(36)," +
+                "  status VARCHAR(20)," +
                 "  PRIMARY KEY (id)," +
-                "  UNIQUE KEY uk_students_email (email)" +
-                ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+                "  CONSTRAINT uk_students_email UNIQUE (email)" +
+                ")"
             );
-            log.info("DatabaseSeeder: Role tables recreated with utf8mb4 charset.");
+            log.info("DatabaseSeeder: Role tables verified/recreated successfully.");
         } catch (Exception e) {
             log.warn("DatabaseSeeder: Could not recreate role tables: {}", e.getMessage());
         }
@@ -647,9 +652,21 @@ public class DatabaseSeeder implements CommandLineRunner {
 
         // Drop auth_users table after migration
         try {
-            jdbcTemplate.execute("SET FOREIGN_KEY_CHECKS = 0");
-            jdbcTemplate.execute("DROP TABLE IF EXISTS auth_users");
-            jdbcTemplate.execute("SET FOREIGN_KEY_CHECKS = 1");
+            try {
+                jdbcTemplate.execute("SET session_replication_role = 'replica'");
+            } catch (Exception ignored) {
+                try {
+                    jdbcTemplate.execute("SET FOREIGN_KEY_CHECKS = 0");
+                } catch (Exception ignored2) {}
+            }
+            jdbcTemplate.execute("DROP TABLE IF EXISTS auth_users CASCADE");
+            try {
+                jdbcTemplate.execute("SET session_replication_role = 'origin'");
+            } catch (Exception ignored) {
+                try {
+                    jdbcTemplate.execute("SET FOREIGN_KEY_CHECKS = 1");
+                } catch (Exception ignored2) {}
+            }
             log.info("auth_users table dropped successfully.");
         } catch (Exception e) {
             log.warn("Could not drop auth_users table: {}", e.getMessage());

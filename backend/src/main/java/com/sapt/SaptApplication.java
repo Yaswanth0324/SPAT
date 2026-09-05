@@ -46,10 +46,10 @@ public class SaptApplication {
                      java.sql.Statement stmt = conn.createStatement()) {
                     stmt.executeUpdate("DROP TABLE IF EXISTS sapt_app_reviews");
                     try (java.sql.ResultSet rs = stmt.executeQuery(
-                            "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'app_reviews' AND COLUMN_NAME IN ('category', 'dept', 'text')")) {
+                            "SELECT column_name FROM information_schema.columns WHERE LOWER(table_name) = 'app_reviews' AND LOWER(column_name) IN ('category', 'dept', 'text')")) {
                         if (rs.next()) {
                             System.err.println("[INFO] Pre-start cleanup: Dropping legacy app_reviews table to remove legacy columns...");
-                            stmt.executeUpdate("DROP TABLE IF EXISTS app_reviews");
+                            stmt.executeUpdate("DROP TABLE IF EXISTS app_reviews CASCADE");
                         }
                     }
                 }
