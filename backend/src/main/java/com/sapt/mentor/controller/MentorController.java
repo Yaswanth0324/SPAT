@@ -114,6 +114,12 @@ public class MentorController {
         reviewRequest.setStatus(com.sapt.common.enums.SubmissionStatus.REJECTED);
         reviewRequest.setCredits(0);
 
+        // Compute credit penalty: ceil(suggestedCredits * 10%)
+        SubmissionDto.SubmissionResponse sub = submissionService.getSubmissionById(id);
+        int suggested = sub.getSuggestedCredits() != null ? sub.getSuggestedCredits() : 0;
+        int penalty = (int) Math.ceil(suggested * 0.10);
+        reviewRequest.setCreditPenalty(penalty);
+
         submissionService.reviewSubmission(mentorId, id, reviewRequest);
         return ResponseEntity.ok(ApiResponse.success("Submission rejected successfully"));
     }

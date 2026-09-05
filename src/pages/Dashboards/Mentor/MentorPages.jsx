@@ -239,10 +239,10 @@ export const MentorStudents = () => {
                         <body>
                           <div class="header">
                             <div class="logo-container">
-                              <img src="/spat-logo1.png" style="width: 32px; height: 32px; object-fit: contain; border-radius: 8px;" />
-                              <span class="logo-text">SPAT</span>
+                              <img src="/sapt-logo1.png" style="width: 32px; height: 32px; object-fit: contain; border-radius: 8px;" />
+                              <span class="logo-text">SAPT</span>
                             </div>
-                            <div class="college-name">${selected.college || 'SPAT Partner Institute'}</div>
+                            <div class="college-name">${selected.college || 'SAPT Partner Institute'}</div>
                           </div>
                           <div class="details">
                             <p><strong>Student Name:</strong> ${selected.name}</p>
@@ -314,10 +314,10 @@ export const MentorStudents = () => {
                         <body>
                           <div class="header">
                             <div class="logo-container">
-                              <img src="/spat-logo1.png" style="width: 32px; height: 32px; object-fit: contain; border-radius: 8px;" />
-                              <span class="logo-text">SPAT</span>
+                              <img src="/sapt-logo1.png" style="width: 32px; height: 32px; object-fit: contain; border-radius: 8px;" />
+                              <span class="logo-text">SAPT</span>
                             </div>
-                            <div class="college-name">${selected.college || 'SPAT Partner Institute'}</div>
+                            <div class="college-name">${selected.college || 'SAPT Partner Institute'}</div>
                           </div>
                           <div class="details">
                             <p><strong>Student Name:</strong> ${selected.name}</p>
@@ -376,6 +376,7 @@ export const MentorSubmissions = () => {
   const [selectedDocs, setSelectedDocs] = useState(null);
   const [fullscreenDoc, setFullscreenDoc] = useState(null);
   const [review, setReview] = useState({ text: '' });
+  const [awardCreditsInput, setAwardCreditsInput] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -410,14 +411,35 @@ export const MentorSubmissions = () => {
     }
   };
 
+  const isCustomSub = (sub) => {
+    if (!sub) return false;
+    return (
+      sub.isCustomCategory === true ||
+      sub.customCategory === true ||
+      sub.isCustom === true ||
+      sub.suggestedCredits === 0 ||
+      sub.suggestedCredits == null ||
+      sub.type === 'Other'
+    );
+  };
+
   const handleReview = async () => {
     try {
-      const credits = reviewModal.suggestedCredits || 0;
+      const isCustom = isCustomSub(reviewModal);
+      let credits = Number(awardCreditsInput);
+      if (isNaN(credits) || awardCreditsInput === '' || credits <= 0) {
+        if (isCustom) {
+          showToast('Please enter valid credits to award for custom category submission', 'warning');
+          return;
+        }
+        credits = reviewModal?.suggestedCredits || 0;
+      }
       await mentorApi.approveSubmission(reviewModal.id, review.text, credits);
       setSubmissions(prev => prev.filter(s => s.id !== reviewModal.id));
       showToast('Review submitted and approved!', 'success');
       setReviewModal(null);
       setReview({ text: '' });
+      setAwardCreditsInput('');
     } catch (err) {
       showToast(err.message || 'Review failed', 'error');
     }
@@ -485,7 +507,7 @@ export const MentorSubmissions = () => {
                   <td className="table-td"><Badge variant={statusColor[s.status]}>{s.status}</Badge></td>
                   <td className="table-td">
                     <div className="flex gap-1">
-                      <button onClick={() => { setReviewModal(s); setReview({ text: s.review || '' }); }} className="btn-ghost text-xs py-1 px-2 flex items-center gap-1">
+                      <button onClick={() => { setReviewModal(s); setReview({ text: s.review || '' }); setAwardCreditsInput(isCustomSub(s) ? '' : String(s.suggestedCredits ?? '')); }} className="btn-ghost text-xs py-1 px-2 flex items-center gap-1">
                         <Eye className="w-3 h-3" /> Review
                       </button>
                     </div>
@@ -506,16 +528,51 @@ export const MentorSubmissions = () => {
               {reviewModal.achievementType && (
                 <div className="flex items-center gap-2 flex-wrap">
                   <Badge variant="blue">{reviewModal.type}</Badge>
-                  <span className="text-xs text-slate-500">â†’</span>
+                  <span className="text-xs text-slate-500">→</span>
                   <Badge variant="purple">{reviewModal.achievementType}</Badge>
                 </div>
               )}
               <p className="text-sm text-slate-500 mt-1">{reviewModal.description}</p>
-              {reviewModal.suggestedCredits != null && (
-                <div className="mt-2 flex items-center gap-2">
-                  <span className="inline-flex items-center gap-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-xs font-semibold px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-700">
-                    âœ… Auto-awarded on approval: {reviewModal.suggestedCredits} pts
+              {isCustomSub(reviewModal) ? (
+                <div className="mt-3 p-3.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700/60 rounded-xl space-y-2">
+                  <div className="flex items-center gap-1.5 font-bold text-amber-800 dark:text-amber-300 text-xs">
+                    <span>⚡</span> Custom Category Submission — Assign Credits Required
+                  </div>
+                  <p className="text-xs text-amber-700 dark:text-amber-300 font-medium">
+                    This activity was submitted under a custom category or has unassigned credits. Please specify the credits to award for this submission:
+                  </p>
+                  <div className="flex items-center gap-2 pt-1">
+                    <label className="text-xs font-bold text-slate-800 dark:text-slate-200">Award Credits:</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="100"
+                      className="input-field py-1 px-3 text-sm font-bold w-28 text-center border-amber-400 dark:border-amber-600 focus:ring-amber-500 bg-white dark:bg-dark-900 text-slate-900 dark:text-white"
+                      placeholder="e.g. 15"
+                      value={awardCreditsInput}
+                      onChange={e => setAwardCreditsInput(e.target.value)}
+                      required
+                    />
+                    <span className="text-xs font-bold text-slate-600 dark:text-slate-300">pts</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-3 p-3 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-xl flex items-center justify-between gap-3">
+                  <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300">
+                    ✅ Default Credits on Approval: {reviewModal.suggestedCredits || 0} pts
                   </span>
+                  <div className="flex items-center gap-1.5">
+                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Credits to Award:</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="100"
+                      className="input-field py-0.5 px-2 text-xs font-bold w-20 text-center"
+                      value={awardCreditsInput}
+                      onChange={e => setAwardCreditsInput(e.target.value)}
+                    />
+                    <span className="text-xs text-slate-500 font-medium">pts</span>
+                  </div>
                 </div>
               )}
               {/* Uploaded files listing */}
