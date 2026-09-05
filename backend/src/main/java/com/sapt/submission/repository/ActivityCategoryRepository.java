@@ -10,5 +10,6 @@ import java.util.Optional;
 @Repository
 public interface ActivityCategoryRepository extends JpaRepository<ActivityCategory, String> {
     Optional<ActivityCategory> findByName(String name);
+    Optional<ActivityCategory> findByNameIgnoreCase(String name);
     List<ActivityCategory> findByIsActiveTrue();
 }

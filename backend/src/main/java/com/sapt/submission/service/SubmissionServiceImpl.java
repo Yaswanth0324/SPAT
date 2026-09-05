@@ -32,7 +32,9 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
+import jakarta.annotation.PostConstruct;
 
 @Slf4j
 @Service
@@ -49,6 +51,30 @@ public class SubmissionServiceImpl implements SubmissionService {
     private final StarThresholdRepository starThresholdRepository;
     private final MongoSubmissionFileRepository mongoSubmissionFileRepository;
 
+    /**
+     * On startup: recalculate every student's credit snapshot so that
+     * any penalty changes (e.g., the new 10% rejection deduction) are
+     * immediately reflected in the dashboard without manual intervention.
+     */
+    @PostConstruct
+    @Transactional
+    public void recalculateAllSnapshotsOnStartup() {
+        log.info("[Startup] Recalculating credit snapshots for all students...");
+        List<String> studentIds = submissionRepository.findAll()
+                .stream()
+                .map(Submission::getStudentId)
+                .distinct()
+                .collect(Collectors.toList());
+        for (String studentId : studentIds) {
+            try {
+                recalculateCreditSnapshot(studentId);
+            } catch (Exception e) {
+                log.error("[Startup] Failed to recalculate snapshot for student {}: {}", studentId, e.getMessage());
+            }
+        }
+        log.info("[Startup] Recalculated snapshots for {} students.", studentIds.size());
+    }
+
     @Override
     @Transactional
     public SubmissionDto.SubmissionResponse createSubmission(String studentId, SubmissionDto.CreateSubmissionRequest request) {
@@ -56,8 +82,38 @@ public class SubmissionServiceImpl implements SubmissionService {
         User student = userRepository.findById(studentId)
                 .orElseThrow(() -> SaptException.notFound("Student not found"));
 
-        if (student.getMentorId() == null) {
-            throw SaptException.badRequest("You must have an assigned mentor before submitting achievements.");
+        String targetMentorId = student.getMentorId();
+        if ((targetMentorId == null || targetMentorId.isBlank()) && request.getMentorId() != null && !request.getMentorId().isBlank()) {
+            targetMentorId = request.getMentorId();
+            student.setMentorId(targetMentorId);
+            userRepository.findById(targetMentorId).ifPresent(m -> student.setMentorName(m.getName()));
+            userRepository.save(student);
+        }
+
+        if (targetMentorId == null || targetMentorId.isBlank()) {
+            // Auto-assign first active mentor in department if available
+            List<User> deptMentors = userRepository.findByDepartmentIdAndRole(student.getDepartmentId(), com.sapt.common.enums.UserRole.MENTOR);
+            if (!deptMentors.isEmpty()) {
+                User defaultMentor = deptMentors.get(0);
+                targetMentorId = defaultMentor.getId();
+                student.setMentorId(targetMentorId);
+                student.setMentorName(defaultMentor.getName());
+                userRepository.save(student);
+            } else {
+                // Auto-assign any active mentor in system if department has no mentors
+                List<User> anyMentors = userRepository.findByRole(com.sapt.common.enums.UserRole.MENTOR);
+                if (!anyMentors.isEmpty()) {
+                    User defaultMentor = anyMentors.get(0);
+                    targetMentorId = defaultMentor.getId();
+                    student.setMentorId(targetMentorId);
+                    student.setMentorName(defaultMentor.getName());
+                    userRepository.save(student);
+                }
+            }
+        }
+
+        if (targetMentorId == null || targetMentorId.isBlank()) {
+            throw SaptException.badRequest("No mentor is currently registered in your department. Please contact your HOD.");
         }
 
         String categoryId = request.getCategoryId();
@@ -72,15 +128,23 @@ public class SubmissionServiceImpl implements SubmissionService {
             category = activityCategoryRepository.findById(categoryId).orElse(null);
         }
         if (category == null && categoryName != null && !categoryName.isBlank()) {
-            category = activityCategoryRepository.findByName(categoryName.trim())
-                    .orElseGet(() -> activityCategoryRepository.save(
+            final String cName = categoryName.trim();
+            category = activityCategoryRepository.findByNameIgnoreCase(cName)
+                    .orElse(null);
+            if (category == null) {
+                try {
+                    category = activityCategoryRepository.save(
                             ActivityCategory.builder()
-                                    .name(categoryName.trim())
+                                    .name(cName)
                                     .isCustom(true)
                                     .createdBy(studentId)
                                     .isActive(true)
                                     .build()
-                    ));
+                    );
+                } catch (Exception e) {
+                    category = activityCategoryRepository.findByNameIgnoreCase(cName).orElse(null);
+                }
+            }
         }
         if (category == null) {
             throw SaptException.badRequest("Category could not be resolved. Please specify categoryId or categoryName.");
@@ -93,15 +157,23 @@ public class SubmissionServiceImpl implements SubmissionService {
             subType = activitySubTypeRepository.findById(subTypeId).orElse(null);
         }
         if (subType == null && achievementType != null && !achievementType.isBlank()) {
-            subType = activitySubTypeRepository.findByCategoryIdAndLabel(resolvedCatId, achievementType.trim())
-                    .orElseGet(() -> activitySubTypeRepository.save(
+            final String aType = achievementType.trim();
+            subType = activitySubTypeRepository.findByCategoryIdAndLabelIgnoreCase(resolvedCatId, aType)
+                    .orElse(null);
+            if (subType == null) {
+                try {
+                    subType = activitySubTypeRepository.save(
                             ActivitySubType.builder()
                                     .categoryId(resolvedCatId)
-                                    .label(achievementType.trim())
+                                    .label(aType)
                                     .points(suggestedCredits)
                                     .isActive(true)
                                     .build()
-                    ));
+                    );
+                } catch (Exception e) {
+                    subType = activitySubTypeRepository.findByCategoryIdAndLabelIgnoreCase(resolvedCatId, aType).orElse(null);
+                }
+            }
         }
         if (subType == null) {
             throw SaptException.badRequest("Achievement type could not be resolved. Please specify subTypeId or achievementType.");
@@ -257,8 +329,22 @@ public class SubmissionServiceImpl implements SubmissionService {
     @Override
     @Transactional(readOnly = true)
     public List<SubmissionDto.SubmissionResponse> getMentorPendingSubmissions(String mentorId) {
-        Page<Submission> page = submissionRepository.findByMentorIdAndStatus(mentorId, SubmissionStatus.PENDING, PageRequest.of(0, 1000));
-        return page.getContent().stream()
+        User mentor = userRepository.findById(mentorId).orElse(null);
+        List<Submission> list = new ArrayList<>(submissionRepository.findByMentorIdAndStatus(mentorId, SubmissionStatus.PENDING, PageRequest.of(0, 1000)).getContent());
+        if (mentor != null && mentor.getDepartmentId() != null) {
+            List<User> deptStudents = userRepository.findByDepartmentIdAndRole(mentor.getDepartmentId(), com.sapt.common.enums.UserRole.STUDENT);
+            List<String> studentIds = deptStudents.stream().map(User::getId).collect(Collectors.toList());
+            if (!studentIds.isEmpty()) {
+                List<Submission> extra = submissionRepository.findByStudentIdInAndStatus(studentIds, SubmissionStatus.PENDING);
+                Set<String> existingIds = list.stream().map(Submission::getId).collect(Collectors.toSet());
+                for (Submission s : extra) {
+                    if (!existingIds.contains(s.getId())) {
+                        list.add(s);
+                    }
+                }
+            }
+        }
+        return list.stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
@@ -298,7 +384,16 @@ public class SubmissionServiceImpl implements SubmissionService {
 
         submission.setStatus(request.getStatus());
         submission.setReviewText(request.getReview());
-        submission.setAwardedCredits(request.getStatus() == SubmissionStatus.REJECTED ? 0 : request.getCredits());
+        if (request.getStatus() == SubmissionStatus.REJECTED) {
+            submission.setAwardedCredits(0);
+            // Store the 10%-ceiling penalty for credit snapshot deduction
+            int penalty = request.getCreditPenalty() != null ? request.getCreditPenalty() : 0;
+            submission.setCreditPenalty(penalty);
+            log.info("Submission {} rejected. Credit penalty applied: {} pts", submissionId, penalty);
+        } else {
+            submission.setAwardedCredits(request.getCredits() != null ? request.getCredits() : 0);
+            submission.setCreditPenalty(0);
+        }
         submission.setReviewedAt(LocalDateTime.now());
         
         submissionRepository.save(submission);
@@ -362,10 +457,19 @@ public class SubmissionServiceImpl implements SubmissionService {
         r.setDate(s.getActivityDate());
         r.setSuggestedCredits(s.getSuggestedCredits());
         r.setCredits(s.getAwardedCredits());
+        r.setCreditPenalty(s.getCreditPenalty());
         r.setStatus(s.getStatus());
         r.setReview(s.getReviewText());
         r.setStudentName(s.getStudentName());
         r.setResubmission(s.isResubmission());
+        // Resolve custom-category flag so mentor UI can show credits input
+        boolean isCustom = s.getCategoryId() != null &&
+                activityCategoryRepository.findById(s.getCategoryId())
+                        .map(ActivityCategory::isCustom).orElse(false);
+        if (!isCustom && s.getSuggestedCredits() == 0) {
+            isCustom = true;
+        }
+        r.setCustomCategory(isCustom);
         r.setReviewedAt(s.getReviewedAt());
         r.setSubmittedAt(s.getSubmittedAt());
         r.setCreatedAt(s.getCreatedAt());
@@ -408,6 +512,7 @@ public class SubmissionServiceImpl implements SubmissionService {
         int rejectedCount = 0;
         int pendingCount = 0;
         int totalCredits = 0;
+        int totalPenalty = 0;
 
         for (Submission s : submissions) {
             if (s.getStatus() == SubmissionStatus.APPROVED) {
@@ -415,10 +520,25 @@ public class SubmissionServiceImpl implements SubmissionService {
                 totalCredits += s.getAwardedCredits();
             } else if (s.getStatus() == SubmissionStatus.REJECTED) {
                 rejectedCount++;
+                // Always compute penalty dynamically from suggestedCredits so that
+                // old rejections (stored creditPenalty=0 before this feature) are
+                // correctly deducted. Formula: ceil(suggestedCredits * 10%).
+                int penalty = (int) Math.ceil(s.getSuggestedCredits() * 0.10);
+                totalPenalty += penalty;
+                // Also persist the penalty so the frontend can display it
+                if (s.getCreditPenalty() != penalty) {
+                    s.setCreditPenalty(penalty);
+                    submissionRepository.save(s);
+                }
             } else if (s.getStatus() == SubmissionStatus.PENDING) {
                 pendingCount++;
             }
         }
+
+        // Subtract penalties from approved credits; floor at 0
+        totalCredits = Math.max(0, totalCredits - totalPenalty);
+        log.info("Student {}: approvedCredits={}, totalPenalty={}, netCredits={}",
+                studentId, totalCredits + totalPenalty, totalPenalty, totalCredits);
 
         // Star / badge thresholds mapping
         int stars = 0;

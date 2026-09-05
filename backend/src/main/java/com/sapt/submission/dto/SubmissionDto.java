@@ -1,5 +1,6 @@
 package com.sapt.submission.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.sapt.common.enums.SubmissionStatus;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -67,6 +68,10 @@ public class SubmissionDto {
         private String documentFileName;
         private String documentBase64;
 
+        // --- Mentor (optional override) ---
+        /** Optional: mentor UUID supplied by student when no mentor is auto-assigned */
+        private String mentorId;
+
         // --- Resubmission Tracking ---
         private Boolean isResubmission;
         private String parentSubmissionId;
@@ -84,6 +89,9 @@ public class SubmissionDto {
 
         /** Credits awarded. Must be 0 if status=REJECTED (DB constraint) */
         private Integer credits;          // → entity.awardedCredits
+
+        /** Credit penalty deducted on rejection = ceil(suggestedCredits * 10%). Set by controller. */
+        private Integer creditPenalty;    // → entity.creditPenalty
     }
 
     // ─── RESPONSE (returned in all GET/POST API responses) ─────────────────
@@ -143,6 +151,12 @@ public class SubmissionDto {
         private Integer credits;
 
         /**
+         * Credit penalty deducted on rejection = ceil(suggestedCredits * 10%).
+         * 0 for approved/pending. Frontend: sub.creditPenalty
+         */
+        private Integer creditPenalty;
+
+        /**
          * Submission status.
          * Frontend checks: sub.status === 'pending' / 'approved' / 'rejected'
          * Serialized to lowercase via SubmissionStatus.toString()
@@ -184,6 +198,19 @@ public class SubmissionDto {
         // ─── Flags ───────────────────────────────────────
         /** true if this is a re-submission after rejection */
         private boolean isResubmission;
+
+        /**
+         * true if submitted under a custom (Other) category.
+         * When true, mentor must manually set credits at review time.
+         * Frontend: sub.isCustomCategory / sub.customCategory
+         */
+        @JsonProperty("isCustomCategory")
+        private boolean isCustomCategory;
+
+        @JsonProperty("customCategory")
+        public boolean getCustomCategory() {
+            return isCustomCategory;
+        }
 
         // ─── Timestamps ──────────────────────────────────
         /** When mentor reviewed this submission */

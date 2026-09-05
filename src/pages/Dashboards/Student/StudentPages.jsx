@@ -88,7 +88,7 @@ export const StudentSubmission = () => {
       }
       finalCategory = form.customCategory.trim();
       finalAchievementType = form.customAchievementType.trim();
-      finalPoints = Number(form.customPoints) || 15;
+      finalPoints = 0;
     } else {
       if (!form.achievementType) {
         showToast('Please select an achievement type', 'warning');
@@ -235,19 +235,20 @@ export const StudentSubmission = () => {
 
           {/* Custom Category Fields */}
           {form.type === 'Other' && (
-            <div className="p-4 bg-slate-50 dark:bg-dark-900 rounded-2xl border border-slate-200 dark:border-dark-750 grid grid-cols-1 sm:grid-cols-3 gap-4 animate-fadeIn">
-              <div>
-                <label className="label-field text-xs text-primary-600 dark:text-primary-400">Custom Category Name</label>
-                <input className="input-field" placeholder="e.g. Community Service" value={form.customCategory} onChange={e => set('customCategory', e.target.value)} required />
+            <div className="p-4 bg-primary-50/50 dark:bg-primary-950/20 rounded-2xl border border-primary-200 dark:border-primary-800 space-y-3 animate-fadeIn">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="label-field text-xs text-primary-600 dark:text-primary-400 font-semibold">Custom Category Name</label>
+                  <input className="input-field" placeholder="e.g. Community Service" value={form.customCategory} onChange={e => set('customCategory', e.target.value)} required />
+                </div>
+                <div>
+                  <label className="label-field text-xs text-primary-600 dark:text-primary-400 font-semibold">Custom Level / Label</label>
+                  <input className="input-field" placeholder="e.g. Coordinator" value={form.customAchievementType} onChange={e => set('customAchievementType', e.target.value)} required />
+                </div>
               </div>
-              <div>
-                <label className="label-field text-xs text-primary-600 dark:text-primary-400">Custom Level / Label</label>
-                <input className="input-field" placeholder="e.g. Coordinator" value={form.customAchievementType} onChange={e => set('customAchievementType', e.target.value)} required />
-              </div>
-              <div>
-                <label className="label-field text-xs text-primary-600 dark:text-primary-400">Suggested Credits</label>
-                <input type="number" className="input-field" value={form.customPoints} onChange={e => set('customPoints', e.target.value)} min={1} required />
-              </div>
+              <p className="text-xs text-primary-700 dark:text-primary-300 flex items-center gap-1.5 font-medium bg-primary-100/60 dark:bg-primary-900/40 p-2.5 rounded-xl">
+                <span>ℹ️</span> Credits for custom categories will be evaluated and assigned by your Mentor upon submission review.
+              </p>
             </div>
           )}
 
@@ -471,173 +472,6 @@ export const StudentLogs = () => {
           </div>
         </form>
       </div>
-
-      {/* Log History */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="font-semibold text-slate-800 dark:text-white">Log History ({logs.length})</h2>
-          {logs.length > 0 && (
-            <button
-              onClick={async () => {
-                // Fetch logo and convert to base64 data URI so it works in blank popup windows
-                let logoDataUri = '';
-                try {
-                  const resp = await fetch(`${window.location.origin}/spat-logo1.png`);
-                  if (resp.ok) {
-                    const blob = await resp.blob();
-                    logoDataUri = await new Promise((resolve) => {
-                      const reader = new FileReader();
-                      reader.onloadend = () => resolve(reader.result);
-                      reader.readAsDataURL(blob);
-                    });
-                  }
-                } catch (_) { /* logo not critical */ }
-
-                const printWindow = window.open('', '_blank');
-                if (!printWindow) return;
-                const content = `
-                  <html>
-                    <head>
-                      <title>Daily Activity Logs - ${user.name}</title>
-                      <style>
-                        body { font-family: 'Inter', sans-serif; padding: 40px; color: #1c0f00; background-color: #ffffff; }
-                        .header { border-bottom: 3px solid #ea580c; padding-bottom: 15px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: flex-end; }
-                        .app-logo { font-size: 26px; font-weight: 900; color: #ea580c; font-family: 'Outfit', sans-serif; letter-spacing: -0.5px; }
-                        .college-name { font-size: 14px; font-weight: 700; color: #7c2d12; text-align: right; text-transform: uppercase; letter-spacing: 0.5px; }
-                        .title { font-size: 22px; font-weight: 800; color: #1c0f00; margin-bottom: 5px; }
-                        .details { margin-bottom: 25px; font-size: 14px; background: #fff7ed; padding: 15px; border-radius: 12px; border: 1px solid #fed7aa; }
-                        .details p { margin: 6px 0; color: #44170a; }
-                        .table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-                        .table th, .table td { border: 1px solid #fed7aa; padding: 12px; text-align: left; font-size: 13px; }
-                        .table th { background: #fff7ed; color: #7c2d12; font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; }
-                        .table td { color: #1c0f00; }
-                        .badge { display: inline-block; padding: 3px 8px; font-size: 11px; font-weight: 700; text-transform: uppercase; border-radius: 999px; text-align: center; }
-                        .badge-approved { background-color: #d1fae5; color: #065f46; }
-                        .badge-pending { background-color: #fef3c7; color: #92400e; }
-                        .badge-rejected { background-color: #fee2e2; color: #991b1b; }
-                      </style>
-                    </head>
-                    <body>
-                      <div class="header">
-                        <div class="logo-container" style="display: flex; align-items: center; gap: 10px;">
-                          ${logoDataUri ? `<img src="${logoDataUri}" style="width: 32px; height: 32px; object-fit: contain; border-radius: 8px;" />` : ''}
-                          <span class="logo-text" style="font-size: 26px; font-weight: 900; color: #ea580c; font-family: 'Outfit', sans-serif; letter-spacing: -0.5px;">SPAT</span>
-                        </div>
-                        <div class="college-name">${user.college || 'SPAT Partner Institute'}</div>
-                      </div>
-                      <div class="title">Daily Activity Logs Report</div>
-                      <div class="details">
-                        <p><strong>Student Name:</strong> ${user.name}</p>
-                        <p><strong>Roll Number:</strong> ${user.rollNo || 'N/A'}</p>
-                        <p><strong>Department:</strong> ${user.department || 'N/A'}</p>
-                      </div>
-                      <h3 style="color: #7c2d12; font-size: 16px; margin-top: 20px;">Logged Daily Activities</h3>
-                      <table class="table">
-                        <thead>
-                          <tr>
-                            <th style="width: 100px;">Date</th>
-                            <th style="width: 150px;">Task Title</th>
-                            <th>Detailed Description</th>
-                            <th>Resource Links</th>
-                            <th style="width: 100px;">Status</th>
-                            <th style="width: 180px;">Mentor Review</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          ${logs.map(l => {
-                            const status = l.reviewStatus || 'pending';
-                            const badgeClass = status === 'approved' ? 'badge-approved' : status === 'rejected' ? 'badge-rejected' : 'badge-pending';
-                            return `
-                              <tr>
-                                <td>${l.date}</td>
-                                <td><strong>${l.title}</strong></td>
-                                <td>${l.description}</td>
-                                <td>${l.links ? `<a href="${l.links}" target="_blank" style="color: #ea580c; text-decoration: underline;">${l.links}</a>` : '–'}</td>
-                                <td><span class="badge ${badgeClass}">${status}</span></td>
-                                <td>${l.mentorRemark ? `<em>"${l.mentorRemark}"</em>` : '–'}</td>
-                              </tr>
-                            `;
-                          }).join('')}
-                        </tbody>
-                      </table>
-                      <script>window.onload = function() { window.print(); }</script>
-                    </body>
-                  </html>
-                `;
-                printWindow.document.write(content);
-                printWindow.document.close();
-              }}
-              className="btn-secondary text-xs gap-1"
-            >
-              <Download className="w-4 h-4" /> Export Logs
-            </button>
-          )}
-        </div>
-        {logs.length === 0 ? (
-          <div className="card"><EmptyState icon={<BookOpen className="w-12 h-12" />} title="No logs yet" subtitle="Start adding your daily activities" /></div>
-        ) : logs.map(l => {
-          const status = l.reviewStatus || 'pending';
-          const isApproved = status === 'approved';
-          const isRejected = status === 'rejected';
-          
-          return (
-            <div 
-              key={l.id} 
-              className={`card border-l-4 transition-all duration-300 ${
-                isApproved 
-                  ? 'border-l-emerald-500 border-emerald-100 dark:border-dark-800' 
-                  : isRejected 
-                    ? 'border-l-red-500 border-red-100 dark:border-dark-800' 
-                    : 'border-l-amber-500 border-slate-200 dark:border-dark-750'
-              }`}
-            >
-              <div className="flex items-start justify-between flex-wrap gap-2">
-                <div>
-                  <p className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-                    {l.title}
-                  </p>
-                  <p className="text-xs text-slate-400 mt-0.5">{l.date}</p>
-                </div>
-                <Badge variant={isApproved ? 'green' : isRejected ? 'red' : 'yellow'}>
-                  {isApproved ? 'Approved' : isRejected ? 'Rejected' : 'Pending'}
-                </Badge>
-              </div>
-              <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">{l.description}</p>
-              {l.links && <a href={l.links} target="_blank" rel="noreferrer" className="text-xs text-primary-500 hover:underline mt-1 block">{l.links}</a>}
-              
-              {/* Mentor Feedback */}
-              {l.mentorRemark && (
-                <div className="mt-3 p-3 bg-slate-50 dark:bg-dark-900 rounded-xl border border-slate-200 dark:border-dark-750 flex items-start gap-2.5">
-                  <span className="text-sm">👨‍🏫</span>
-                  <div className="flex-1">
-                    <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Mentor Feedback</p>
-                    <p className="text-xs text-slate-700 dark:text-slate-300 mt-0.5 italic">"{l.mentorRemark}"</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Resubmission Action for Rejected logs */}
-              {isRejected && (
-                <div className="mt-4 pt-3 border-t border-red-100 dark:border-red-950/35 flex items-center justify-between flex-wrap gap-3">
-                  <p className="text-xs text-red-500 dark:text-red-400 flex items-center gap-1">
-                    ⚠️ <strong>Action Required:</strong> Please edit this log to address mentor feedback.
-                  </p>
-                  <button
-                    onClick={() => {
-                      setCorrectingLogId(l.id);
-                      setForm({ title: l.title, description: l.description, links: l.links || '' });
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }}
-                    className="btn-primary py-1.5 px-3 text-xs font-bold bg-red-600 hover:bg-red-700 text-white"
-                  >
-                    🔄 Edit & Re-Submit
-                  </button>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
     </div>
   );
 };
@@ -765,7 +599,7 @@ export const StudentMetrics = () => {
               // Fetch logo and convert to base64 data URI so it works in blank popup windows
               let logoDataUri = '';
               try {
-                const resp = await fetch(`${window.location.origin}/spat-logo1.png`);
+                const resp = await fetch(`${window.location.origin}/sapt-logo1.png`);
                 if (resp.ok) {
                   const blob = await resp.blob();
                   logoDataUri = await new Promise((resolve) => {
@@ -804,9 +638,9 @@ export const StudentMetrics = () => {
                     <div class="header">
                       <div class="logo-container" style="display: flex; align-items: center; gap: 10px;">
                         ${logoDataUri ? `<img src="${logoDataUri}" style="width: 32px; height: 32px; object-fit: contain; border-radius: 8px;" />` : ''}
-                        <span class="logo-text" style="font-size: 26px; font-weight: 900; color: #ea580c; font-family: 'Outfit', sans-serif; letter-spacing: -0.5px;">SPAT</span>
+                        <span class="logo-text" style="font-size: 26px; font-weight: 900; color: #ea580c; font-family: 'Outfit', sans-serif; letter-spacing: -0.5px;">SAPT</span>
                       </div>
-                      <div class="college-name">${user.college || 'SPAT Partner Institute'}</div>
+                      <div class="college-name">${user.college || 'SAPT Partner Institute'}</div>
                     </div>
                     <div class="title">Student Achievement & Submissions Report</div>
                     <div class="details">
@@ -1248,6 +1082,170 @@ export const StudentReviews = () => {
   const approvedLogs = reviewedLogs.filter(l => l.reviewStatus === 'approved');
   const rejectedLogs = reviewedLogs.filter(l => l.reviewStatus === 'rejected');
 
+  const handleExportSubmissions = async () => {
+    let logoDataUri = '';
+    try {
+      const resp = await fetch(`${window.location.origin}/sapt-logo1.png`);
+      if (resp.ok) {
+        const blob = await resp.blob();
+        logoDataUri = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.readAsDataURL(blob);
+        });
+      }
+    } catch (_) { /* logo not critical */ }
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    const content = `
+      <html>
+        <head>
+          <title>Mentor Submission Reviews - ${user.name}</title>
+          <style>
+            body { font-family: 'Inter', sans-serif; padding: 40px; color: #1c0f00; background-color: #ffffff; }
+            .header { border-bottom: 3px solid #ea580c; padding-bottom: 15px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: flex-end; }
+            .college-name { font-size: 14px; font-weight: 700; color: #7c2d12; text-align: right; text-transform: uppercase; letter-spacing: 0.5px; }
+            .title { font-size: 22px; font-weight: 800; color: #1c0f00; margin-bottom: 5px; }
+            .details { margin-bottom: 25px; font-size: 14px; background: #fff7ed; padding: 15px; border-radius: 12px; border: 1px solid #fed7aa; }
+            .details p { margin: 6px 0; color: #44170a; }
+            .table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+            .table th, .table td { border: 1px solid #fed7aa; padding: 12px; text-align: left; font-size: 13px; }
+            .table th { background: #fff7ed; color: #7c2d12; font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; }
+            .table td { color: #1c0f00; }
+            .badge { display: inline-block; padding: 3px 8px; font-size: 11px; font-weight: 700; text-transform: uppercase; border-radius: 999px; }
+            .badge-approved { background-color: #d1fae5; color: #065f46; }
+            .badge-rejected { background-color: #fee2e2; color: #991b1b; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              ${logoDataUri ? `<img src="${logoDataUri}" style="width: 32px; height: 32px; object-fit: contain; border-radius: 8px;" />` : ''}
+              <span style="font-size: 26px; font-weight: 900; color: #ea580c; font-family: 'Outfit', sans-serif; letter-spacing: -0.5px;">SAPT</span>
+            </div>
+            <div class="college-name">${user.college || 'SAPT Partner Institute'}</div>
+          </div>
+          <div class="title">Mentor Submission Reviews Report</div>
+          <div class="details">
+            <p><strong>Student Name:</strong> ${user.name}</p>
+            <p><strong>Roll Number:</strong> ${user.rollNo || 'N/A'}</p>
+            <p><strong>Department:</strong> ${user.department || 'N/A'}</p>
+          </div>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Title</th>
+                <th>Category</th>
+                <th>Status</th>
+                <th>Credits</th>
+                <th>Mentor Comments</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${reviewedSubmissions.map(s => {
+                const isRejected = s.status === 'rejected';
+                return `<tr>
+                  <td>${s.submittedAt || s.date || '–'}</td>
+                  <td><strong>${s.title}</strong></td>
+                  <td>${s.type || '–'}</td>
+                  <td><span class="badge ${isRejected ? 'badge-rejected' : 'badge-approved'}">${isRejected ? 'Rejected' : 'Approved'}</span></td>
+                  <td>${isRejected ? '0' : (s.credits || s.suggestedCredits || '0')} pts</td>
+                  <td><em>${s.review ? '"' + s.review + '"' : '–'}</em></td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+          <script>window.onload = function() { window.print(); }<\/script>
+        </body>
+      </html>
+    `;
+    printWindow.document.write(content);
+    printWindow.document.close();
+  };
+
+  const handleExportLogs = async () => {
+    let logoDataUri = '';
+    try {
+      const resp = await fetch(`${window.location.origin}/sapt-logo1.png`);
+      if (resp.ok) {
+        const blob = await resp.blob();
+        logoDataUri = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.readAsDataURL(blob);
+        });
+      }
+    } catch (_) { /* logo not critical */ }
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    const content = `
+      <html>
+        <head>
+          <title>Mentor Log Reviews - ${user.name}</title>
+          <style>
+            body { font-family: 'Inter', sans-serif; padding: 40px; color: #1c0f00; background-color: #ffffff; }
+            .header { border-bottom: 3px solid #ea580c; padding-bottom: 15px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: flex-end; }
+            .college-name { font-size: 14px; font-weight: 700; color: #7c2d12; text-align: right; text-transform: uppercase; letter-spacing: 0.5px; }
+            .title { font-size: 22px; font-weight: 800; color: #1c0f00; margin-bottom: 5px; }
+            .details { margin-bottom: 25px; font-size: 14px; background: #fff7ed; padding: 15px; border-radius: 12px; border: 1px solid #fed7aa; }
+            .details p { margin: 6px 0; color: #44170a; }
+            .table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+            .table th, .table td { border: 1px solid #fed7aa; padding: 12px; text-align: left; font-size: 13px; }
+            .table th { background: #fff7ed; color: #7c2d12; font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; }
+            .table td { color: #1c0f00; }
+            .badge { display: inline-block; padding: 3px 8px; font-size: 11px; font-weight: 700; text-transform: uppercase; border-radius: 999px; }
+            .badge-approved { background-color: #d1fae5; color: #065f46; }
+            .badge-rejected { background-color: #fee2e2; color: #991b1b; }
+            .badge-pending { background-color: #fef3c7; color: #92400e; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              ${logoDataUri ? `<img src="${logoDataUri}" style="width: 32px; height: 32px; object-fit: contain; border-radius: 8px;" />` : ''}
+              <span style="font-size: 26px; font-weight: 900; color: #ea580c; font-family: 'Outfit', sans-serif; letter-spacing: -0.5px;">SAPT</span>
+            </div>
+            <div class="college-name">${user.college || 'SAPT Partner Institute'}</div>
+          </div>
+          <div class="title">Mentor Daily Log Reviews Report</div>
+          <div class="details">
+            <p><strong>Student Name:</strong> ${user.name}</p>
+            <p><strong>Roll Number:</strong> ${user.rollNo || 'N/A'}</p>
+            <p><strong>Department:</strong> ${user.department || 'N/A'}</p>
+          </div>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Title</th>
+                <th>Description</th>
+                <th>Status</th>
+                <th>Mentor Remarks</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${reviewedLogs.map(l => {
+                const status = l.reviewStatus || 'pending';
+                const badgeClass = status === 'approved' ? 'badge-approved' : status === 'rejected' ? 'badge-rejected' : 'badge-pending';
+                return `<tr>
+                  <td>${l.date || '–'}</td>
+                  <td><strong>${l.title}</strong></td>
+                  <td>${l.description || '–'}</td>
+                  <td><span class="badge ${badgeClass}">${status}</span></td>
+                  <td><em>${l.mentorRemark ? '"' + l.mentorRemark + '"' : '–'}</em></td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+          <script>window.onload = function() { window.print(); }<\/script>
+        </body>
+      </html>
+    `;
+    printWindow.document.write(content);
+    printWindow.document.close();
+  };
+
   return (
     <div className="animate-fade-in">
       <div className="mb-8">
@@ -1257,28 +1255,40 @@ export const StudentReviews = () => {
         </p>
       </div>
 
-      {/* Tabs */}
-      <div className="flex border-b border-slate-200 dark:border-dark-750 gap-4 mb-6">
-        <button
-          onClick={() => setActiveTab('submissions')}
-          className={`pb-3 text-sm font-semibold border-b-2 transition-all duration-300 ${
-            activeTab === 'submissions'
-              ? 'border-primary-500 text-primary-600 dark:text-primary-400'
-              : 'border-transparent text-slate-400 dark:text-slate-500 hover:text-slate-600'
-          }`}
-        >
-          Submissions Feedback ({reviewedSubmissions.length})
-        </button>
-        <button
-          onClick={() => setActiveTab('logs')}
-          className={`pb-3 text-sm font-semibold border-b-2 transition-all duration-300 ${
-            activeTab === 'logs'
-              ? 'border-primary-500 text-primary-600 dark:text-primary-400'
-              : 'border-transparent text-slate-400 dark:text-slate-500 hover:text-slate-600'
-          }`}
-        >
-          Daily Logs Feedback ({reviewedLogs.length})
-        </button>
+      {/* Tabs + Export Button */}
+      <div className="flex items-center justify-between border-b border-slate-200 dark:border-dark-750 mb-6">
+        <div className="flex gap-4">
+          <button
+            onClick={() => setActiveTab('submissions')}
+            className={`pb-3 text-sm font-semibold border-b-2 transition-all duration-300 ${
+              activeTab === 'submissions'
+                ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                : 'border-transparent text-slate-400 dark:text-slate-500 hover:text-slate-600'
+            }`}
+          >
+            Submissions Feedback ({reviewedSubmissions.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('logs')}
+            className={`pb-3 text-sm font-semibold border-b-2 transition-all duration-300 ${
+              activeTab === 'logs'
+                ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                : 'border-transparent text-slate-400 dark:text-slate-500 hover:text-slate-600'
+            }`}
+          >
+            Daily Logs Feedback ({reviewedLogs.length})
+          </button>
+        </div>
+        {activeTab === 'submissions' && reviewedSubmissions.length > 0 && (
+          <button onClick={handleExportSubmissions} className="btn-secondary text-xs gap-1 mb-3">
+            <Download className="w-4 h-4" /> Export Submission Reviews
+          </button>
+        )}
+        {activeTab === 'logs' && reviewedLogs.length > 0 && (
+          <button onClick={handleExportLogs} className="btn-secondary text-xs gap-1 mb-3">
+            <Download className="w-4 h-4" /> Export Log Reviews
+          </button>
+        )}
       </div>
 
       {activeTab === 'submissions' ? (
@@ -1319,7 +1329,7 @@ export const StudentReviews = () => {
                           <Badge variant="blue">{s.type}</Badge>
                           <span className="text-slate-300 dark:text-slate-700">•</span>
                           <Badge variant={isRejected ? 'red' : 'green'}>
-                            {isRejected ? 'Rejected (Requires Correction)' : 'Approved & Credited'}
+                            {isRejected ? 'Rejected' : 'Approved & Credited'}
                           </Badge>
                         </div>
                         <h3 className="text-lg font-bold text-slate-900 dark:text-white mt-1">{s.title}</h3>
@@ -1327,10 +1337,21 @@ export const StudentReviews = () => {
                       </div>
 
                       <div className="text-left md:text-right shrink-0">
-                        <p className="text-xs text-slate-400">Awarded Credits</p>
-                        <p className={`text-2xl font-extrabold ${isRejected ? 'text-slate-400 line-through' : 'text-emerald-500 dark:text-emerald-400'}`}>
-                          {isRejected ? '0' : s.credits || s.suggestedCredits || '0'} pts
-                        </p>
+                        {isRejected ? (
+                          <>
+                            <p className="text-xs text-red-400">Credit Deduction</p>
+                            <p className="text-2xl font-extrabold text-red-500 dark:text-red-400">
+                              −{s.creditPenalty ?? Math.ceil((s.suggestedCredits || 0) * 0.1)} pts
+                            </p>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-xs text-slate-400">Awarded Credits</p>
+                            <p className="text-2xl font-extrabold text-emerald-500 dark:text-emerald-400">
+                              {s.credits || s.suggestedCredits || '0'} pts
+                            </p>
+                          </>
+                        )}
                       </div>
                     </div>
 
@@ -1349,18 +1370,21 @@ export const StudentReviews = () => {
                       </div>
                     </div>
 
-                    {/* Resubmission Action for Rejected activities */}
+                    {/* Credit Penalty Notice for Rejected submissions */}
                     {isRejected && (
-                      <div className="mt-4 pt-3 border-t border-red-100 dark:border-red-950/35 flex items-center justify-between flex-wrap gap-3">
-                        <p className="text-xs text-red-500 dark:text-red-400 flex items-center gap-1">
-                          ⚠️ <strong>Action Required:</strong> Please re-upload this activity after making the requested corrections.
-                        </p>
-                        <button
-                          onClick={() => navigate('/dashboard/student/submission', { state: { resubmitActivity: s } })}
-                          className="btn-primary py-2 px-4 text-xs font-bold bg-red-600 hover:bg-red-700 text-white"
-                        >
-                          🔄 Edit & Re-Submit
-                        </button>
+                      <div className="mt-4 pt-3 border-t border-red-100 dark:border-red-950/35">
+                        <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40">
+                          <span className="text-base">⚠️</span>
+                          <div className="flex-1">
+                            <p className="text-xs font-bold text-red-600 dark:text-red-400">
+                              Credit Penalty Applied
+                            </p>
+                            <p className="text-xs text-red-500 dark:text-red-400 mt-0.5">
+                              <strong>{s.creditPenalty ?? Math.ceil((s.suggestedCredits || 0) * 0.1)} credits</strong> have been deducted from your total for this fraudulent/incorrect submission.
+                            </p>
+                          </div>
+                          <span className="text-lg font-extrabold text-red-600 dark:text-red-400">−{s.creditPenalty ?? Math.ceil((s.suggestedCredits || 0) * 0.1)} pts</span>
+                        </div>
                       </div>
                     )}
                   </div>
