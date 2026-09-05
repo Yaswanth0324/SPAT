@@ -9,6 +9,7 @@ import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -40,11 +41,10 @@ public class JsonAuthEntryPoint implements AuthenticationEntryPoint {
         response.setContentType("application/json;charset=UTF-8");
 
         // Build a response matching ApiResponse<Void> structure
-        Map<String, Object> body = Map.of(
-                "success", false,
-                "message", "Session expired. Please login again.",
-                "data",    null
-        );
+        Map<String, Object> body = new HashMap<>();
+        body.put("success", false);
+        body.put("message", "Session expired. Please login again.");
+        body.put("data", null);
 
         response.getWriter().write(objectMapper.writeValueAsString(body));
     }

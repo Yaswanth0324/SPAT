@@ -50,8 +50,8 @@ const Navbar = () => {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-3">
-            <img src={isDark ? "/spat-logo1.png" : "/spat-logo2.png"} className="w-10 h-10 object-contain rounded-xl shadow-glow" alt="SPAT Logo" />
-            <span className="font-display font-bold text-xl" style={{ color: logoTextColor }}>SPAT</span>
+            <img src={isDark ? "/sapt-logo1.png" : "/sapt-logo2.png"} className="w-10 h-10 object-contain rounded-xl shadow-glow" alt="SAPT Logo" />
+            <span className="font-display font-bold text-xl" style={{ color: logoTextColor }}>SAPT</span>
           </Link>
 
           {/* Desktop Nav */}

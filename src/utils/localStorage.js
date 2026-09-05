@@ -5,13 +5,13 @@
 import { DEPARTMENTS } from './mockData';
 
 const KEYS = {
-  USERS: 'spat_users',
-  CURRENT_USER: 'spat_current_user',
-  SUBMISSIONS: 'spat_submissions',
-  LOGS: 'spat_logs',
-  COLLEGES: 'spat_colleges',
-  REGISTERED: 'spat_registered',
-  THEME: 'spat_theme',
+  USERS: 'sapt_users',
+  CURRENT_USER: 'sapt_current_user',
+  SUBMISSIONS: 'sapt_submissions',
+  LOGS: 'sapt_logs',
+  COLLEGES: 'sapt_colleges',
+  REGISTERED: 'sapt_registered',
+  THEME: 'sapt_theme',
 };
 
 // ---- INIT ----
@@ -129,9 +129,10 @@ export const updateSubmission = (id, updates) => {
 };
 
 export const getTotalCredits = (studentId) => {
-  return getSubmissionsByStudent(studentId)
-    .filter(s => s.status === 'approved')
-    .reduce((sum, s) => sum + (s.credits || 0), 0);
+  const subs = getSubmissionsByStudent(studentId);
+  const approved = subs.filter(s => s.status === 'approved').reduce((sum, s) => sum + (s.credits || 0), 0);
+  const penalty = subs.filter(s => s.status === 'rejected').reduce((sum, s) => sum + (s.creditPenalty || Math.ceil((s.suggestedCredits || 0) * 0.10)), 0);
+  return Math.max(0, approved - penalty);
 };
 
 // ---- LOGS ----
@@ -212,14 +213,14 @@ export const setTheme = (theme) => localStorage.setItem(KEYS.THEME, theme);
 // ---- DYNAMIC CATEGORIES ----
 export const getCustomCategories = () => {
   try {
-    return JSON.parse(localStorage.getItem('spat_custom_categories') || '{}');
+    return JSON.parse(localStorage.getItem('sapt_custom_categories') || '{}');
   } catch (e) {
     return {};
   }
 };
 
 export const saveCustomCategories = (cats) => {
-  localStorage.setItem('spat_custom_categories', JSON.stringify(cats));
+  localStorage.setItem('sapt_custom_categories', JSON.stringify(cats));
 };
 
 export const addCustomCategory = (name, achievementType, points) => {
@@ -245,6 +246,6 @@ export const generateAdminId = () =>
 export const simulateOTP = () => {
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
   // In a real app, this would be sent via email
-  console.log(`[SPAT OTP Simulation] Your OTP is: ${otp}`);
+  console.log(`[SAPT OTP Simulation] Your OTP is: ${otp}`);
   return otp;
 };

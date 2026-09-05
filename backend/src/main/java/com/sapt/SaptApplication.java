@@ -44,7 +44,7 @@ public class SaptApplication {
             if (url != null && user != null && pass != null) {
                 try (java.sql.Connection conn = java.sql.DriverManager.getConnection(url, user, pass);
                      java.sql.Statement stmt = conn.createStatement()) {
-                    stmt.executeUpdate("DROP TABLE IF EXISTS spat_app_reviews");
+                    stmt.executeUpdate("DROP TABLE IF EXISTS sapt_app_reviews");
                     try (java.sql.ResultSet rs = stmt.executeQuery(
                             "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'app_reviews' AND COLUMN_NAME IN ('category', 'dept', 'text')")) {
                         if (rs.next()) {

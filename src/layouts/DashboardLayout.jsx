@@ -42,7 +42,7 @@ const DashboardLayout = ({ links, title }) => {
 
   useEffect(() => {
     if (!user || !user.id) return;
-    const key = `spat_review_prompt_done_${user.id}`;
+    const key = `sapt_review_prompt_done_${user.id}`;
     if (localStorage.getItem(key)) return;
 
     const regTime = user.createdAt ? new Date(user.createdAt).getTime() : Date.now();
@@ -55,8 +55,8 @@ const DashboardLayout = ({ links, title }) => {
         return [
           {
             id: '7day_review_prompt',
-            title: '⭐ Rate & Review SPAT',
-            body: 'You have been using SPAT for over 7 days! Please take a moment to review our application.',
+            title: '⭐ Rate & Review SAPT',
+            body: 'You have been using SAPT for over 7 days! Please take a moment to review our application.',
             type: 'SYSTEM_ANNOUNCEMENT',
             read: false,
             createdAt: new Date().toISOString(),
@@ -131,15 +131,15 @@ const DashboardLayout = ({ links, title }) => {
     setSubmittingReview(true);
     try {
       await reviewApi.create({
-        name: user?.name || user?.fullName || 'SPAT User',
-        email: user?.email || 'user@spat.edu.in',
-        college: user?.college || user?.collegeName || 'SPAT College',
+        name: user?.name || user?.fullName || 'SAPT User',
+        email: user?.email || 'user@sapt.edu.in',
+        college: user?.college || user?.collegeName || 'SAPT College',
         role: user?.role === 'STUDENT' ? 'Student' : user?.role === 'MENTOR' ? 'Mentor' : user?.role === 'HOD' ? 'HOD' : user?.role === 'COLLEGE_ADMIN' ? 'College Management' : 'Student',
         rating: reviewRating,
         feedback: reviewText.trim()
       });
       if (user?.id) {
-        localStorage.setItem(`spat_review_prompt_done_${user.id}`, 'true');
+        localStorage.setItem(`sapt_review_prompt_done_${user.id}`, 'true');
       }
       setShowReviewPopup(false);
     } catch {
@@ -151,7 +151,7 @@ const DashboardLayout = ({ links, title }) => {
 
   const handleDismiss7DayPopup = () => {
     if (user?.id) {
-      localStorage.setItem(`spat_review_prompt_done_${user.id}`, 'true');
+      localStorage.setItem(`sapt_review_prompt_done_${user.id}`, 'true');
     }
     setShowReviewPopup(false);
   };
@@ -338,8 +338,8 @@ const DashboardLayout = ({ links, title }) => {
               <div className="inline-flex p-3 rounded-2xl mb-3" style={{ background: 'linear-gradient(135deg, #ea580c, #dc2626)' }}>
                 <MessageSquarePlus className="w-7 h-7 text-white" />
               </div>
-              <h3 className="font-display text-xl font-bold">Enjoying SPAT?</h3>
-              <p className="text-xs mt-1 text-orange-500 font-medium">You've been using SPAT for over 7 days!</p>
+              <h3 className="font-display text-xl font-bold">Enjoying SAPT?</h3>
+              <p className="text-xs mt-1 text-orange-500 font-medium">You've been using SAPT for over 7 days!</p>
               <p className="text-xs mt-1 opacity-75">Please take a moment to rate and review our application.</p>
             </div>
 
@@ -366,7 +366,7 @@ const DashboardLayout = ({ links, title }) => {
                 <label className="text-xs font-semibold uppercase tracking-wider block mb-1">Your Review</label>
                 <textarea
                   className="input-field min-h-[90px] text-sm resize-none"
-                  placeholder="Share your experience using SPAT..."
+                  placeholder="Share your experience using SAPT..."
                   value={reviewText}
                   onChange={e => setReviewText(e.target.value)}
                   required

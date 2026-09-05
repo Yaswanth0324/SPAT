@@ -57,7 +57,7 @@ const defaultStudentTestimonials = [
     dept: 'CS Engineering, MIT', 
     category: 'STUDENT',
     rating: 5, 
-    text: 'SPAT has completely transformed how I track my co-curricular accomplishments. The interface is gorgeous, and seeing my star level increase keeps me incredibly motivated!' 
+    text: 'SAPT has completely transformed how I track my co-curricular accomplishments. The interface is gorgeous, and seeing my star level increase keeps me incredibly motivated!' 
   },
   { 
     name: 'Arjun Krishnan', 
@@ -74,14 +74,14 @@ const defaultManagementTestimonials = [
     dept: 'HOD, CS Engineering, MIT', 
     category: 'MANAGEMENT',
     rating: 5, 
-    text: 'Managing student activity credits used to be an administrative nightmare of spreadsheets and lost certificates. SPAT has streamlined the entire verification process into a seamless departmental dashboard.' 
+    text: 'Managing student activity credits used to be an administrative nightmare of spreadsheets and lost certificates. SAPT has streamlined the entire verification process into a seamless departmental dashboard.' 
   },
   { 
     name: 'Prof. Arun Vijay', 
     dept: 'Senior Mentor, MIT College of Eng.', 
     category: 'MANAGEMENT',
     rating: 5, 
-    text: 'As a mentor, SPAT allows me to stay connected with my students\' extracurricular progress. The approval workflow is highly intuitive, allowing me to review and validate submissions in just a single click.' 
+    text: 'As a mentor, SAPT allows me to stay connected with my students\' extracurricular progress. The approval workflow is highly intuitive, allowing me to review and validate submissions in just a single click.' 
   }
 ];
 
@@ -193,14 +193,14 @@ const HomePage = () => {
 
           <h1 className="font-display text-6xl md:text-8xl font-black leading-none tracking-tight"
             style={{ color: headingColor }}>
-            SPAT
+            SAPT
             <span className="block text-xl md:text-3xl mt-3.5 font-bold tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-primary-500 via-orange-500 to-amber-500">
-              Student Performance, Activities & Records Tracker
+              Student Activity &amp; Performance Tracker
             </span>
           </h1>
 
           <p className="text-lg md:text-xl max-w-2xl mx-auto leading-relaxed font-normal" style={{ color: bodyTextColor }}>
-            SPAT helps students track co-curricular activities, earn credits, and showcase achievements — all in one beautiful, intelligent platform.
+            SAPT helps students track co-curricular activities, earn credits, and showcase achievements — all in one beautiful, intelligent platform.
           </p>
 
           <div className="flex flex-wrap gap-4 justify-center pt-1.5">
@@ -404,7 +404,7 @@ const HomePage = () => {
               <div className="inline-flex p-3 rounded-2xl mb-3" style={{ background: 'linear-gradient(135deg, #ea580c, #dc2626)' }}>
                 <MessageSquarePlus className="w-7 h-7 text-white" />
               </div>
-              <h3 className="font-display text-xl font-bold" style={{ color: headingColor }}>Rate &amp; Review SPAT</h3>
+              <h3 className="font-display text-xl font-bold" style={{ color: headingColor }}>Rate &amp; Review SAPT</h3>
               <p className="text-sm mt-1" style={{ color: subtleColor }}>Share your experience with our platform</p>
             </div>
 
@@ -486,7 +486,7 @@ const HomePage = () => {
                 <label className="label-field">Feedback <span className="text-red-500">*</span></label>
                 <textarea
                   className="input-field min-h-[100px] resize-none"
-                  placeholder="Write your feedback about SPAT..."
+                  placeholder="Write your feedback about SAPT..."
                   value={newReview.feedback}
                   onChange={e => setNewReview({ ...newReview, feedback: e.target.value })}
                   required
@@ -513,7 +513,7 @@ const HomePage = () => {
           <div className="rounded-3xl p-12 shadow-glow"
             style={{ background: cardBg, border: `1px solid rgba(234,88,12,0.3)`, backdropFilter: 'blur(12px)' }}>
             <h2 className="font-display text-4xl font-bold mb-4" style={{ color: headingColor }}>Ready to Track Your Journey?</h2>
-            <p className="mb-8" style={{ color: bodyTextColor }}>Join thousands of students already using SPAT to showcase their achievements.</p>
+            <p className="mb-8" style={{ color: bodyTextColor }}>Join thousands of students already using SAPT to showcase their achievements.</p>
             <button onClick={handleGetStarted} className="btn-primary text-base px-10 py-4 shadow-glow-lg text-lg">
               Get Started — It's Free
             </button>
@@ -526,11 +526,11 @@ const HomePage = () => {
         <div className="max-w-7xl mx-auto grid md:grid-cols-3 gap-10">
           <div>
             <div className="flex items-center gap-3 mb-4">
-              <img src={isDark ? "/spat-logo1.png" : "/spat-logo2.png"} className="w-8 h-8 object-contain rounded-xl" alt="SPAT Logo" />
-              <span className="font-display font-bold text-xl" style={{ color: headingColor }}>SPAT</span>
+              <img src={isDark ? "/sapt-logo1.png" : "/sapt-logo2.png"} className="w-8 h-8 object-contain rounded-xl" alt="SAPT Logo" />
+              <span className="font-display font-bold text-xl" style={{ color: headingColor }}>SAPT</span>
             </div>
             <p className="text-sm leading-relaxed" style={{ color: subtleColor }}>
-              Student Performance, Activities & Records Tracker — Empowering students to document, track, and celebrate their achievements.
+              Student Activity &amp; Performance Tracker — Empowering students to document, track, and celebrate their achievements.
             </p>
             <div className="flex gap-3 mt-4">
               {[ExternalLink, Code2, Network].map((Icon, i) => (
@@ -557,7 +557,7 @@ const HomePage = () => {
             <h3 className="font-semibold mb-4" style={{ color: headingColor }}>Contact</h3>
             <div className="space-y-3">
               <div className="flex items-center gap-3 text-sm" style={{ color: subtleColor }}>
-                <Mail className="w-4 h-4 text-primary-500" /><span>support@spat.edu.in</span>
+                <Mail className="w-4 h-4 text-primary-500" /><span>support@sapt.edu.in</span>
               </div>
               <div className="flex items-center gap-3 text-sm" style={{ color: subtleColor }}>
                 <Phone className="w-4 h-4 text-primary-500" /><span>+91 98765 43210</span>
@@ -570,7 +570,7 @@ const HomePage = () => {
         </div>
         <div className="max-w-7xl mx-auto mt-10 pt-6 text-center text-sm"
           style={{ borderTop: `1px solid ${dividerColor}`, color: mutedColor }}>
-          © {new Date().getFullYear()} SPAT — Student Performance, Activities & Records Tracker. All rights reserved.
+          © {new Date().getFullYear()} SAPT — Student Activity &amp; Performance Tracker. All rights reserved.
         </div>
       </footer>
     </div>

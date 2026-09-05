@@ -434,8 +434,8 @@ public class DatabaseSeeder implements CommandLineRunner {
                 if (!alreadyHasWelcome) {
                     Notification notif = Notification.builder()
                             .recipientId(u.getId())
-                            .title("Welcome to SPAT!")
-                            .body("Hello " + u.getName() + "! Welcome to the Student Activity Point Tracker. Your account is active.")
+                            .title("Welcome to SAPT!")
+                            .body("Hello " + u.getName() + "! Welcome to the Student Activity & Performance Tracker. Your account is active.")
                             .type(NotificationType.SYSTEM_ANNOUNCEMENT)
                             .isRead(false)
                             .build();

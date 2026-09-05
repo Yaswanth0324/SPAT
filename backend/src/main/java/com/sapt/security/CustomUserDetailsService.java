@@ -32,7 +32,7 @@ public class CustomUserDetailsService implements UserDetailsService {
     private final UserRepository userRepository;
 
     /**
-     * Load user by email (used as the username in SPAT).
+     * Load user by email (used as the username in SAPT).
      * Called by Spring Security during authentication.
      *
      * NOTE: There is a naming conflict between:
@@ -43,28 +43,28 @@ public class CustomUserDetailsService implements UserDetailsService {
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
 
-        User spatUser = userRepository.findByEmail(username)
+        User saptUser = userRepository.findByEmail(username)
                 .orElseThrow(() -> {
                     log.warn("User not found with email: {}", username);
                     return new UsernameNotFoundException("User not found: " + username);
                 });
 
-        if (!spatUser.isActive()) {
+        if (!saptUser.isActive()) {
             log.warn("Attempt to load deactivated account: {}", username);
             throw new UsernameNotFoundException("Account is deactivated: " + username);
         }
 
         // Use fully-qualified Spring Security User builder to avoid naming conflict
         return org.springframework.security.core.userdetails.User.builder()
-                .username(spatUser.getEmail())
-                .password(spatUser.getPasswordHash())           // BCrypt hash from users.password_hash
+                .username(saptUser.getEmail())
+                .password(saptUser.getPasswordHash())           // BCrypt hash from users.password_hash
                 .authorities(Collections.singletonList(
-                        new SimpleGrantedAuthority("ROLE_" + spatUser.getRole().name())
+                        new SimpleGrantedAuthority("ROLE_" + saptUser.getRole().name())
                 ))
                 .accountExpired(false)
                 .accountLocked(false)
                 .credentialsExpired(false)
-                .disabled(!spatUser.isActive())
+                .disabled(!saptUser.isActive())
                 .build();
     }
 }

@@ -84,7 +84,7 @@ public class NotificationController {
      * Falls back to the email string itself if user not found (edge case).
      */
     private String resolveUserId(UserDetails userDetails) {
-        String email = userDetails.getUsername(); // email in SPAT
+        String email = userDetails.getUsername(); // email in SAPT
         return userRepository.findByEmail(email)
                 .map(u -> u.getId())
                 .orElse(email); // fallback

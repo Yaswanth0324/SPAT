@@ -14,7 +14,7 @@ export const setToken  = (token)     => localStorage.setItem(TOKEN_KEY, token);
 export const clearToken = ()         => localStorage.removeItem(TOKEN_KEY);
 
 // ── Session-expired event (fired on 401/403 so AuthContext can auto-logout) ────
-export const SESSION_EXPIRED_EVENT = 'spat:session-expired';
+export const SESSION_EXPIRED_EVENT = 'sapt:session-expired';
 const dispatchSessionExpired = () => {
   window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT));
 };

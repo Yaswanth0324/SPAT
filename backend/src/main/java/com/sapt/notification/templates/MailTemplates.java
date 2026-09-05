@@ -9,7 +9,7 @@ package com.sapt.notification.templates;
  *
  * Design rules:
  *  - All CSS is INLINE (email clients don't support <style> tags)
- *  - Dark themed, branded with SPAT orange (#FF6B35)
+ *  - Dark themed, branded with SAPT orange (#FF6B35)
  *  - Mobile-responsive with max-width container
  *  - No external image or font links (email clients block them)
  * ============================================================
@@ -42,7 +42,7 @@ public final class MailTemplates {
             + "<head>"
             +   "<meta charset='UTF-8'>"
             +   "<meta name='viewport' content='width=device-width, initial-scale=1.0'>"
-            +   "<title>SPAT Notification</title>"
+            +   "<title>SAPT Notification</title>"
             + "</head>"
             + "<body style='"
             +   "margin:0; padding:0; background-color:" + BG_OUTER + ";"
@@ -62,9 +62,9 @@ public final class MailTemplates {
             + "<tr>"
             + "<td style='background: linear-gradient(135deg," + PRIMARY + " 0%," + PRIMARY_DIM + " 100%); "
             +       "padding: 28px 32px; border-radius:16px 16px 0 0; text-align:center;'>"
-            + "<p style='margin:0; font-size:28px; font-weight:800; color:#ffffff; letter-spacing:-0.5px;'>SPAT</p>"
+            + "<p style='margin:0; font-size:28px; font-weight:800; color:#ffffff; letter-spacing:-0.5px;'>SAPT</p>"
             + "<p style='margin:4px 0 0; font-size:12px; color:rgba(255,255,255,0.8); letter-spacing:1px; text-transform:uppercase;'>"
-            +   "Student Activity Point Tracker"
+            +   "Student Activity &amp; Performance Tracker"
             + "</p>"
             + "</td>"
             + "</tr>"
@@ -80,10 +80,10 @@ public final class MailTemplates {
             + "<td style='background-color:" + BG_FOOTER + "; padding:20px 32px; "
             +       "border-radius:0 0 16px 16px; border-top:1px solid " + BORDER + "; text-align:center;'>"
             + "<p style='margin:0; font-size:12px; color:" + TEXT_MUTED + ";'>"
-            +   "This is an automated email from SPAT. Please do not reply to this message."
+            +   "This is an automated email from SAPT. Please do not reply to this message."
             + "</p>"
             + "<p style='margin:8px 0 0; font-size:12px; color:" + TEXT_MUTED + ";'>"
-            +   "&copy; 2025 SPAT &mdash; All rights reserved."
+            +   "&copy; 2025 SAPT &mdash; All rights reserved."
             + "</p>"
             + "</td>"
             + "</tr>"
@@ -164,12 +164,12 @@ public final class MailTemplates {
         String roleLabel = formatRole(role);
         String roleColor = getRoleColor(role);
 
-        return cardOpen("Welcome to SPAT, " + fullName + "! Your account is ready.")
+        return cardOpen("Welcome to SAPT, " + fullName + "! Your account is ready.")
             + "<p style='margin:0 0 16px; font-size:18px; font-weight:700; color:" + TEXT_MAIN + ";'>"
             +   "Welcome aboard, " + escapeHtml(fullName) + "! &#127881;"
             + "</p>"
             + "<p style='margin:0 0 20px; font-size:15px; color:" + TEXT_MUTED + "; line-height:1.6;'>"
-            +   "Your account has been successfully created on SPAT. You're registered as:"
+            +   "Your account has been successfully created on SAPT. You're registered as:"
             + "</p>"
             // Role badge
             + "<div style='text-align:center; margin:0 0 24px;'>"
@@ -234,7 +234,7 @@ public final class MailTemplates {
             +   remarksHtml
             + "</div>"
             + "<p style='margin:0 0 24px; font-size:14px; color:" + TEXT_MUTED + "; line-height:1.6;'>"
-            +   "Log in to SPAT to view full details and track your activity points."
+            +   "Log in to SAPT to view full details and track your activity points."
             + "</p>"
             + "<hr style='border:none; border-top:1px solid " + BORDER + "; margin:0;'>"
             + cardClose();
@@ -268,7 +268,7 @@ public final class MailTemplates {
             +   "<p style='margin:0; font-size:15px; font-weight:600; color:" + TEXT_MAIN + ";'>" + escapeHtml(activityTitle) + "</p>"
             + "</div>"
             + "<p style='margin:0 0 24px; font-size:14px; color:" + TEXT_MUTED + "; line-height:1.6;'>"
-            +   "Please log in to SPAT to review this submission and take action."
+            +   "Please log in to SAPT to review this submission and take action."
             + "</p>"
             + "<hr style='border:none; border-top:1px solid " + BORDER + "; margin:0;'>"
             + cardClose();
@@ -352,12 +352,12 @@ public final class MailTemplates {
         return "<html><body style='font-family: \"Segoe UI\", Tahoma, Geneva, Verdana, sans-serif; background-color: #fafafa; margin: 0; padding: 20px; color: #333333;'>"
             + "<div style='max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 16px; border: 1px solid #fed7aa; overflow: hidden; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);'>"
             + "<div style='background: linear-gradient(135deg, #ea580c 0%, #f97316 100%); padding: 30px; text-align: center; color: #ffffff;'>"
-            + "<h1 style='margin: 0; font-size: 28px; font-weight: 800; letter-spacing: 1px;'>SPAT</h1>"
-            + "<p style='margin: 5px 0 0 0; font-size: 14px; opacity: 0.9;'>Student Performance & Activity Tracker</p>"
+            + "<h1 style='margin: 0; font-size: 28px; font-weight: 800; letter-spacing: 1px;'>SAPT</h1>"
+            + "<p style='margin: 5px 0 0 0; font-size: 14px; opacity: 0.9;'>Student Activity &amp; Performance Tracker</p>"
             + "</div>"
             + "<div style='padding: 30px; line-height: 1.6;'>"
             + "<h2 style='color: #ea580c; margin-top: 0;'>Welcome, " + fullName + "!</h2>"
-            + "<p>Your College Administrator account has been registered successfully on SPAT by the Platform Admin.</p>"
+            + "<p>Your College Administrator account has been registered successfully on SAPT by the Platform Admin.</p>"
             + "<p style='margin-bottom: 25px;'>Please find your initial login credentials and administrator details below:</p>"
             
             + "<div style='background-color: #fff7ed; border: 1px dashed #fdba74; border-radius: 12px; padding: 20px; margin-bottom: 30px;'>"
@@ -377,7 +377,7 @@ public final class MailTemplates {
             + "<p style='color: #64748b; font-size: 13px; border-top: 1px solid #f1f5f9; padding-top: 20px;'>Note: For security reasons, we strongly recommend that you change your password immediately after logging in for the first time.</p>"
             + "</div>"
             + "<div style='background-color: #f8fafc; padding: 20px; text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #f1f5f9;'>"
-            + "This is an automated security email from SPAT. Please do not reply directly to this message."
+            + "This is an automated security email from SAPT. Please do not reply directly to this message."
             + "</div>"
             + "</div>"
             + "</body></html>";

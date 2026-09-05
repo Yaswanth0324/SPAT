@@ -47,12 +47,12 @@ const HelpPage = () => {
               {
                 icon: <HelpCircle className="w-7 h-7" />,
                 title: 'FAQs',
-                desc: 'Answers to the most common questions about SPAT. Coming soon.',
+                desc: 'Answers to the most common questions about SAPT. Coming soon.',
               },
               {
                 icon: <Mail className="w-7 h-7" />,
                 title: 'Contact Support',
-                desc: 'Reach out to our team at support@spat.edu.in for any queries.',
+                desc: 'Reach out to our team at support@sapt.edu.in for any queries.',
               },
             ].map((card) => (
               <div

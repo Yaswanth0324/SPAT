@@ -68,7 +68,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   // ── Global 401/403 auto-logout listener ──────────────────────────────────────
-  // When any API call returns 401 or 403, api.js dispatches 'spat:session-expired'.
+  // When any API call returns 401 or 403, api.js dispatches 'sapt:session-expired'.
   // We catch it here and perform a clean logout + redirect.
   useEffect(() => {
     const handleSessionExpired = () => {

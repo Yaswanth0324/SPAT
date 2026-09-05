@@ -106,10 +106,10 @@ public class NotificationService {
     @Async
     public void sendWelcomeEmail(String userEmail, String fullName, String role) {
         try {
-            String subject  = "Welcome to SPAT - Student Activity Point Tracker";
+            String subject  = "Welcome to SAPT - Student Activity & Performance Tracker";
             String htmlBody = MailTemplates.buildWelcomeEmail(fullName, role);
             mailService.sendHtmlMail(userEmail, subject, htmlBody);
-            saveNotification(userEmail, "Welcome to SPAT", "Welcome to SPAT - Student Activity Point Tracker as a " + role, NotificationType.SYSTEM_ANNOUNCEMENT);
+            saveNotification(userEmail, "Welcome to SAPT", "Welcome to SAPT - Student Activity & Performance Tracker as a " + role, NotificationType.SYSTEM_ANNOUNCEMENT);
             log.info("Welcome email sent to: {}", userEmail);
         } catch (Exception e) {
             log.error("Failed to send welcome email to {}: {}", userEmail, e.getMessage());
@@ -137,7 +137,7 @@ public class NotificationService {
             String studentEmail, String studentName,
             String activityTitle, String newStatus, String remarks) {
         try {
-            String subject  = "SPAT - Your submission has been " + capitalize(newStatus);
+            String subject  = "SAPT - Your submission has been " + capitalize(newStatus);
             String htmlBody = MailTemplates.buildSubmissionStatusEmail(
                     studentName, activityTitle, newStatus, remarks);
             mailService.sendHtmlMail(studentEmail, subject, htmlBody);
@@ -163,7 +163,7 @@ public class NotificationService {
             String mentorEmail, String mentorName,
             String studentName, String activityTitle) {
         try {
-            String subject  = "SPAT - New submission from " + studentName + " awaits your review";
+            String subject  = "SAPT - New submission from " + studentName + " awaits your review";
             String htmlBody = MailTemplates.buildMentorNewSubmissionEmail(
                     mentorName, studentName, activityTitle);
             mailService.sendHtmlMail(mentorEmail, subject, htmlBody);
