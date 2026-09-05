@@ -48,11 +48,9 @@ const InlineFileViewer = ({ fileUrl, filename, title }) => {
     );
   }
   
-  if (isPdf || isOffice) {
-    const officeViewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(absoluteDownloadUrl)}&embedded=true`;
-    
+  if (isPdf) {
     return (
-      <div className="flex flex-col w-full h-[70vh] rounded-2xl overflow-hidden border border-slate-200 dark:border-dark-750 bg-white">
+      <div className="flex flex-col w-full h-[75vh] rounded-2xl overflow-hidden border border-slate-200 dark:border-dark-750 bg-white dark:bg-dark-900">
         <div className="bg-slate-50 dark:bg-dark-900 border-b border-slate-200 dark:border-dark-750 px-4 py-2 flex items-center justify-between shrink-0">
           <span className="text-xs text-slate-700 dark:text-slate-350 font-semibold truncate max-w-[70%]">
             📄 Original Document: <strong>{filename}</strong>
@@ -65,7 +63,30 @@ const InlineFileViewer = ({ fileUrl, filename, title }) => {
             Download Original
           </a>
         </div>
-        <iframe src={officeViewerUrl} className="w-full flex-1" title={title} frameBorder="0" />
+        <iframe src={downloadUrl} className="w-full flex-1 border-0" title={title || filename} />
+      </div>
+    );
+  }
+
+  if (isOffice) {
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const officeViewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(absoluteDownloadUrl)}&embedded=true`;
+    
+    return (
+      <div className="flex flex-col w-full h-[75vh] rounded-2xl overflow-hidden border border-slate-200 dark:border-dark-750 bg-white dark:bg-dark-900">
+        <div className="bg-slate-50 dark:bg-dark-900 border-b border-slate-200 dark:border-dark-750 px-4 py-2 flex items-center justify-between shrink-0">
+          <span className="text-xs text-slate-700 dark:text-slate-350 font-semibold truncate max-w-[70%]">
+            📊 Document: <strong>{filename}</strong>
+          </span>
+          <a 
+            href={downloadUrl} 
+            download={filename} 
+            className="text-xs text-primary-600 hover:text-primary-700 underline font-bold"
+          >
+            Download Original
+          </a>
+        </div>
+        <iframe src={isLocal ? downloadUrl : officeViewerUrl} className="w-full flex-1 border-0" title={title || filename} />
       </div>
     );
   }

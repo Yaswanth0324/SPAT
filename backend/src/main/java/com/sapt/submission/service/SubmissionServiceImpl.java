@@ -587,7 +587,12 @@ public class SubmissionServiceImpl implements SubmissionService {
         
         SubmissionDto.FileDownloadResponse response = new SubmissionDto.FileDownloadResponse();
         response.setContent(content);
-        response.setContentType(mongoFile.getMimeType());
+        
+        String contentType = mongoFile.getMimeType();
+        if (contentType == null || contentType.isBlank() || contentType.equals("application/octet-stream")) {
+            contentType = detectMimeType(mongoFile.getOriginalFilename());
+        }
+        response.setContentType(contentType);
         response.setFilename(mongoFile.getOriginalFilename());
         return response;
     }
