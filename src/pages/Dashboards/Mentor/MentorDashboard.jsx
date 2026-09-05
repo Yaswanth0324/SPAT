@@ -85,7 +85,7 @@ export const MentorDashboard = () => {
     // Fetch logo and convert to base64 data URI so it works in blank popup windows
     let logoDataUri = '';
     try {
-      const resp = await fetch(`${window.location.origin}/spat-logo1.png`);
+      const resp = await fetch(`${window.location.origin}/sapt-logo1.png`);
       if (resp.ok) {
         const blob = await resp.blob();
         logoDataUri = await new Promise((resolve) => {
@@ -251,7 +251,7 @@ export const MentorDashboard = () => {
           <div class="header">
             <div class="logo-container">
               ${logoDataUri ? `<img src="${logoDataUri}" style="width: 32px; height: 32px; object-fit: contain; border-radius: 8px;" />` : ''}
-              <span class="logo-text">SPAT</span>
+              <span class="logo-text">SAPT</span>
             </div>
             <div class="college-name">${user.college}</div>
           </div>
@@ -336,7 +336,7 @@ export const MentorDashboard = () => {
 
           <div class="footer">
             <div>
-              <p style="margin: 0;">Compiled automatically via SPAT student portal logs.</p>
+              <p style="margin: 0;">Compiled automatically via SAPT student portal logs.</p>
               <p style="margin: 4px 0 0 0;">All achievements reviewed and approved under college bylaws.</p>
             </div>
             <div>

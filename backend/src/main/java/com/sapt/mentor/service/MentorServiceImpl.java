@@ -12,6 +12,8 @@ import com.sapt.student.repository.DailyLogRepository;
 import com.sapt.submission.dto.SubmissionDto;
 import com.sapt.submission.entity.Submission;
 import com.sapt.submission.entity.SubmissionFile;
+import com.sapt.submission.entity.ActivityCategory;
+import com.sapt.submission.repository.ActivityCategoryRepository;
 import com.sapt.submission.repository.SubmissionFileRepository;
 import com.sapt.submission.repository.SubmissionRepository;
 import lombok.RequiredArgsConstructor;
@@ -40,6 +42,7 @@ public class MentorServiceImpl implements MentorService {
     private final SubmissionRepository submissionRepository;
     private final SubmissionFileRepository submissionFileRepository;
     private final PasswordEncoder passwordEncoder;
+    private final ActivityCategoryRepository activityCategoryRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -73,10 +76,19 @@ public class MentorServiceImpl implements MentorService {
     @Transactional(readOnly = true)
     public List<MentorDto.StudentSummary> getAssignedStudents(String mentorId) {
         log.info("Mentor getAssignedStudents: mentorId={}", mentorId);
-        List<User> students = userRepository.findByMentorId(mentorId);
-        
-        return students.stream()
+        User mentor = userRepository.findById(mentorId).orElse(null);
+        List<User> students = userRepository.findByMentorId(mentorId).stream()
                 .filter(s -> s.getStatus() == com.sapt.common.enums.UserStatus.APPROVED && s.isActive())
+                .collect(Collectors.toCollection(ArrayList::new));
+        
+        if (students.isEmpty() && mentor != null && mentor.getDepartmentId() != null) {
+            List<User> deptStudents = userRepository.findByDepartmentIdAndRole(mentor.getDepartmentId(), com.sapt.common.enums.UserRole.STUDENT).stream()
+                    .filter(s -> s.getStatus() == com.sapt.common.enums.UserStatus.APPROVED && s.isActive())
+                    .collect(Collectors.toList());
+            students.addAll(deptStudents);
+        }
+
+        return students.stream()
                 .map(this::mapToStudentSummary)
                 .collect(Collectors.toList());
     }
@@ -90,8 +102,15 @@ public class MentorServiceImpl implements MentorService {
         
         List<User> students = userRepository.findByMentorId(mentorId).stream()
                 .filter(s -> s.getStatus() == com.sapt.common.enums.UserStatus.APPROVED && s.isActive())
-                .collect(Collectors.toList());
+                .collect(Collectors.toCollection(ArrayList::new));
                 
+        if (students.isEmpty() && mentor.getDepartmentId() != null) {
+            List<User> deptStudents = userRepository.findByDepartmentIdAndRole(mentor.getDepartmentId(), com.sapt.common.enums.UserRole.STUDENT).stream()
+                    .filter(s -> s.getStatus() == com.sapt.common.enums.UserStatus.APPROVED && s.isActive())
+                    .collect(Collectors.toList());
+            students.addAll(deptStudents);
+        }
+
         int totalStudents = students.size();
         
         int totalCredits = 0;
@@ -106,12 +125,27 @@ public class MentorServiceImpl implements MentorService {
                 .sorted((a, b) -> Integer.compare(b.getCredits(), a.getCredits()))
                 .limit(3)
                 .collect(Collectors.toList());
-                
-        long approvedCount = submissionRepository.countByMentorIdAndStatus(mentorId, com.sapt.common.enums.SubmissionStatus.APPROVED);
-        long rejectedCount = submissionRepository.countByMentorIdAndStatus(mentorId, com.sapt.common.enums.SubmissionStatus.REJECTED);
-        long pendingCount = submissionRepository.countByMentorIdAndStatus(mentorId, com.sapt.common.enums.SubmissionStatus.PENDING);
+
+        List<String> studentIds = students.stream().map(User::getId).collect(Collectors.toList());
+        long approvedCount = 0;
+        long rejectedCount = 0;
+        long pendingCount = 0;
+        List<Submission> allSubs = new ArrayList<>();
+
+        if (!studentIds.isEmpty()) {
+            List<Submission> deptSubs = submissionRepository.findByStudentIdIn(studentIds);
+            allSubs = deptSubs;
+            approvedCount = deptSubs.stream().filter(s -> s.getStatus() == com.sapt.common.enums.SubmissionStatus.APPROVED).count();
+            rejectedCount = deptSubs.stream().filter(s -> s.getStatus() == com.sapt.common.enums.SubmissionStatus.REJECTED).count();
+            pendingCount = deptSubs.stream().filter(s -> s.getStatus() == com.sapt.common.enums.SubmissionStatus.PENDING).count();
+        } else {
+            approvedCount = submissionRepository.countByMentorIdAndStatus(mentorId, com.sapt.common.enums.SubmissionStatus.APPROVED);
+            rejectedCount = submissionRepository.countByMentorIdAndStatus(mentorId, com.sapt.common.enums.SubmissionStatus.REJECTED);
+            pendingCount = submissionRepository.countByMentorIdAndStatus(mentorId, com.sapt.common.enums.SubmissionStatus.PENDING);
+            allSubs = submissionRepository.findByMentorId(mentorId, PageRequest.of(0, 100000)).getContent();
+        }
         
-        List<Submission> approvedSubs = submissionRepository.findByMentorId(mentorId, PageRequest.of(0, 100000)).getContent().stream()
+        List<Submission> approvedSubs = allSubs.stream()
                 .filter(s -> s.getStatus() == com.sapt.common.enums.SubmissionStatus.APPROVED)
                 .collect(Collectors.toList());
                 
@@ -291,14 +325,27 @@ public class MentorServiceImpl implements MentorService {
     }
 
     private MentorDto.StudentSummary mapToStudentSummary(User s) {
-        Integer credits = submissionRepository.sumAwardedCreditsByStudentId(s.getId());
-        if (credits == null) credits = 0;
-        
-        long activitiesCount = submissionRepository.countByStudentIdAndStatus(s.getId(), com.sapt.common.enums.SubmissionStatus.APPROVED);
-        
-        int stars = computeStars(credits);
+        List<Submission> submissions = submissionRepository.findByStudentIdOrderBySubmittedAtDesc(s.getId());
+        int approvedCredits = 0;
+        int totalPenalty = 0;
+        long approvedCount = 0;
+
+        for (Submission sub : submissions) {
+            if (sub.getStatus() == com.sapt.common.enums.SubmissionStatus.APPROVED) {
+                approvedCount++;
+                approvedCredits += sub.getAwardedCredits();
+            } else if (sub.getStatus() == com.sapt.common.enums.SubmissionStatus.REJECTED) {
+                int penalty = sub.getCreditPenalty() > 0 
+                        ? sub.getCreditPenalty() 
+                        : (int) Math.ceil(sub.getSuggestedCredits() * 0.10);
+                totalPenalty += penalty;
+            }
+        }
+        int netCredits = Math.max(0, approvedCredits - totalPenalty);
+
+        int stars = computeStars(netCredits);
         String badge = computeBadge(stars);
-        
+
         return MentorDto.StudentSummary.builder()
                 .id(s.getId())
                 .name(s.getName())
@@ -307,8 +354,8 @@ public class MentorServiceImpl implements MentorService {
                 .phone(s.getPhone())
                 .avatar(s.getAvatarUrl())
                 .department(s.getDepartmentName())
-                .credits(credits)
-                .activitiesCount((int) activitiesCount)
+                .credits(netCredits)
+                .activitiesCount((int) approvedCount)
                 .starsCount(stars)
                 .badge(badge)
                 .build();
@@ -331,10 +378,18 @@ public class MentorServiceImpl implements MentorService {
         r.setDate(s.getActivityDate());
         r.setSuggestedCredits(s.getSuggestedCredits());
         r.setCredits(s.getAwardedCredits());
+        r.setCreditPenalty(s.getCreditPenalty());
         r.setStatus(s.getStatus());
         r.setReview(s.getReviewText());
         r.setStudentName(s.getStudentName());
         r.setResubmission(s.isResubmission());
+        boolean isCustom = s.getCategoryId() != null &&
+                activityCategoryRepository.findById(s.getCategoryId())
+                        .map(com.sapt.submission.entity.ActivityCategory::isCustom).orElse(false);
+        if (!isCustom && s.getSuggestedCredits() == 0) {
+            isCustom = true;
+        }
+        r.setCustomCategory(isCustom);
         r.setReviewedAt(s.getReviewedAt());
         r.setSubmittedAt(s.getSubmittedAt());
         r.setCreatedAt(s.getCreatedAt());
