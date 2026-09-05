@@ -149,9 +149,19 @@ public class CollegeAdminServiceImpl implements CollegeAdminService {
         CollegeAdminDto.PlacementFactors placementFactors = buildPlacementFactors(submissions);
 
         // ── 6. Top 3 student performers ───────────────────────────────
-        Map<String, Integer> creditByStudent = approved.stream()
-                .collect(Collectors.groupingBy(Submission::getStudentId,
-                         Collectors.summingInt(Submission::getAwardedCredits)));
+        Map<String, Integer> creditByStudent = new HashMap<>();
+        for (User s : students) {
+            List<Submission> studentSubs = submissions.stream()
+                    .filter(sub -> sub.getStudentId().equals(s.getId()))
+                    .collect(Collectors.toList());
+            int approvedSum = studentSubs.stream()
+                    .filter(sub -> sub.getStatus() == SubmissionStatus.APPROVED)
+                    .mapToInt(Submission::getAwardedCredits).sum();
+            int penaltySum = studentSubs.stream()
+                    .filter(sub -> sub.getStatus() == SubmissionStatus.REJECTED)
+                    .mapToInt(sub -> sub.getCreditPenalty() > 0 ? sub.getCreditPenalty() : (int) Math.ceil(sub.getSuggestedCredits() * 0.10)).sum();
+            creditByStudent.put(s.getId(), Math.max(0, approvedSum - penaltySum));
+        }
 
         List<CollegeAdminDto.StudentPerformance> topStudents = students.stream()
                 .map(s -> CollegeAdminDto.StudentPerformance.builder()
@@ -181,6 +191,9 @@ public class CollegeAdminServiceImpl implements CollegeAdminService {
                     int successRate     = processedCount > 0 ? Math.round((approvedCount * 100f) / processedCount) : 0;
                     int creditsGuided   = mentorSubs.stream().filter(s -> s.getStatus() == SubmissionStatus.APPROVED)
                                                    .mapToInt(Submission::getAwardedCredits).sum();
+                    int penaltiesGuided = mentorSubs.stream().filter(s -> s.getStatus() == SubmissionStatus.REJECTED)
+                                                   .mapToInt(s -> s.getCreditPenalty() > 0 ? s.getCreditPenalty() : (int) Math.ceil(s.getSuggestedCredits() * 0.10)).sum();
+                    int netCreditsGuided = Math.max(0, creditsGuided - penaltiesGuided);
                     return CollegeAdminDto.MentorPerformance.builder()
                             .id(m.getId())
                             .name(m.getName())
@@ -188,7 +201,7 @@ public class CollegeAdminServiceImpl implements CollegeAdminService {
                             .avatarUrl(m.getAvatarUrl())
                             .successRate(successRate)
                             .approvedCount(approvedCount)
-                            .totalCreditsGuided(creditsGuided)
+                            .totalCreditsGuided(netCreditsGuided)
                             .build();
                 })
                 .sorted(Comparator.comparingInt(CollegeAdminDto.MentorPerformance::getSuccessRate).reversed()
@@ -203,9 +216,13 @@ public class CollegeAdminServiceImpl implements CollegeAdminService {
                             .filter(s -> dept.getId().equals(s.getDepartmentId()))
                             .map(User::getId)
                             .collect(Collectors.toList());
-                    int credits = approved.stream()
+                    int approvedCredits = approved.stream()
                             .filter(s -> deptStudentIds.contains(s.getStudentId()))
                             .mapToInt(Submission::getAwardedCredits).sum();
+                    int penaltyCredits = rejected.stream()
+                            .filter(s -> deptStudentIds.contains(s.getStudentId()))
+                            .mapToInt(s -> s.getCreditPenalty() > 0 ? s.getCreditPenalty() : (int) Math.ceil(s.getSuggestedCredits() * 0.10)).sum();
+                    int netCredits = Math.max(0, approvedCredits - penaltyCredits);
                     // Abbreviation: first letter of each word
                     String abbr = Arrays.stream(dept.getName().split("\\s+"))
                             .filter(w -> !w.isEmpty())
@@ -215,7 +232,7 @@ public class CollegeAdminServiceImpl implements CollegeAdminService {
                             .name(abbr)
                             .fullName(dept.getName())
                             .students(deptStudentIds.size())
-                            .credits(credits)
+                            .credits(netCredits)
                             .build();
                 })
                 .collect(Collectors.toList());

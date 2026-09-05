@@ -165,7 +165,7 @@ export const CollegeAdminDashboard = () => {
     // Fetch logo and convert to base64 data URI so it works in blank popup windows
     let logoDataUri = '';
     try {
-      const resp = await fetch(`${window.location.origin}/spat-logo1.png`);
+      const resp = await fetch(`${window.location.origin}/sapt-logo1.png`);
       if (resp.ok) {
         const blob = await resp.blob();
         logoDataUri = await new Promise((resolve) => {
@@ -187,7 +187,7 @@ export const CollegeAdminDashboard = () => {
 <html>
 <head>
   <meta charset="UTF-8" />
-  <title>${collegeName} — SPAT Report</title>
+  <title>${collegeName} — SAPT Report</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', Arial, sans-serif; padding: 48px; color: #1e293b; background: #fff; }
@@ -223,7 +223,7 @@ export const CollegeAdminDashboard = () => {
   <div class="header">
     <div class="logo-block">
       ${logoHtml}
-      <span class="logo-text">SPAT</span>
+      <span class="logo-text">SAPT</span>
     </div>
     <div class="college-block">
       <div class="college-name">${collegeName}</div>
@@ -232,7 +232,7 @@ export const CollegeAdminDashboard = () => {
   </div>
 
   <div class="report-title">College Dashboard Report</div>
-  <div class="report-subtitle">${collegeName} — Student Activity Point Tracker</div>
+  <div class="report-subtitle">${collegeName} — Student Activity &amp; Performance Tracker</div>
 
   <h3>Summary</h3>
   <table>
@@ -253,7 +253,7 @@ export const CollegeAdminDashboard = () => {
   </table>
 
   <div class="footer">
-    <span>SPAT — Student Activity Point Tracker</span>
+    <span>SAPT — Student Activity &amp; Performance Tracker</span>
     <span>© ${new Date().getFullYear()} ${collegeName}</span>
   </div>
 
@@ -275,7 +275,7 @@ export const CollegeAdminDashboard = () => {
             <Calendar className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-sm font-bold text-slate-800 dark:text-white leading-none">SPAT Institutional Contract License</p>
+            <p className="text-sm font-bold text-slate-800 dark:text-white leading-none">SAPT Institutional Contract License</p>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Authorized access period for {user?.college}</p>
           </div>
         </div>
