@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
  * ============================================================
  * College — Institution Entity
  * ============================================================
- * Represents a partner college registered in the SPAT system.
+ * Represents a partner college registered in the SAPT system.
  * Created and managed by System Admins.
  *
  * Departments are stored in the separate `departments` table

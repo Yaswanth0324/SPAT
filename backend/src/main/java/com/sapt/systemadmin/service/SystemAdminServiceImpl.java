@@ -152,7 +152,7 @@ public class SystemAdminServiceImpl implements SystemAdminService {
                     verifyLink
             );
             mailService.sendHtmlMail(req.getAdminEmail().trim(),
-                    "SPAT - College Admin Registration & Verification", htmlBody);
+                    "SAPT - College Admin Registration & Verification", htmlBody);
             log.info("Verification email sent to: {}", req.getAdminEmail());
         } catch (Exception e) {
             log.error("Failed to send verification email to {}: {}", req.getAdminEmail(), e.getMessage());
