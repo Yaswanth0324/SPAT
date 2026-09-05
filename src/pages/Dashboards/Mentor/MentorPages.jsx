@@ -535,7 +535,7 @@ export const MentorSubmissions = () => {
                 </div>
               )}
               <p className="text-sm text-slate-500 mt-1">{reviewModal.description}</p>
-              {isCustomSub(reviewModal) ? (
+              {isCustomSub(reviewModal) && (
                 <div className="mt-3 p-3.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700/60 rounded-xl space-y-2">
                   <div className="flex items-center gap-1.5 font-bold text-amber-800 dark:text-amber-300 text-xs">
                     <span>⚡</span> Custom Category Submission — Assign Credits Required
@@ -558,21 +558,14 @@ export const MentorSubmissions = () => {
                     <span className="text-xs font-bold text-slate-600 dark:text-slate-300">pts</span>
                   </div>
                 </div>
-              ) : (
-                <div className="mt-3 p-3 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-xl flex items-center justify-between gap-3">
-                  <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
-                    <span>✅</span> Fixed Credits on Approval: {reviewModal.suggestedCredits || 0} pts
-                  </span>
-                  <Badge variant="green">Predefined Category</Badge>
-                </div>
               )}
               {/* Uploaded files listing */}
               {(reviewModal.certificateFile || reviewModal.presentationFile || reviewModal.documentFile) && (
                 <div className="mt-2 pt-2 border-t border-slate-200 dark:border-dark-700 space-y-1">
                   <p className="text-xs font-semibold text-slate-500">Uploaded Files:</p>
-                  {reviewModal.certificateFile && <p className="text-xs text-slate-600 dark:text-slate-400">ðŸ“„ {reviewModal.certificateFile}</p>}
-                  {reviewModal.presentationFile && <p className="text-xs text-slate-600 dark:text-slate-400">ðŸ“Š {reviewModal.presentationFile}</p>}
-                  {reviewModal.documentFile && <p className="text-xs text-slate-600 dark:text-slate-400">ðŸ“ {reviewModal.documentFile}</p>}
+                  {reviewModal.certificateFile && <p className="text-xs text-slate-600 dark:text-slate-400">📄 {reviewModal.certificateFile}</p>}
+                  {reviewModal.presentationFile && <p className="text-xs text-slate-600 dark:text-slate-400">📊 {reviewModal.presentationFile}</p>}
+                  {reviewModal.documentFile && <p className="text-xs text-slate-600 dark:text-slate-400">📑 {reviewModal.documentFile}</p>}
                 </div>
               )}
             </div>
