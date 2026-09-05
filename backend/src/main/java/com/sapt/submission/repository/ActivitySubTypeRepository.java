@@ -11,4 +11,5 @@ import java.util.Optional;
 public interface ActivitySubTypeRepository extends JpaRepository<ActivitySubType, String> {
     List<ActivitySubType> findByCategoryIdAndIsActiveTrue(String categoryId);
     Optional<ActivitySubType> findByCategoryIdAndLabel(String categoryId, String label);
+    Optional<ActivitySubType> findByCategoryIdAndLabelIgnoreCase(String categoryId, String label);
 }

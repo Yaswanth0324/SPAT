@@ -69,6 +69,7 @@ public interface SubmissionRepository extends JpaRepository<Submission, String> 
      * Returns an empty list if studentIds is empty — callers must guard against that.
      */
     List<Submission> findByStudentIdIn(List<String> studentIds);
+    List<Submission> findByStudentIdInAndStatus(List<String> studentIds, SubmissionStatus status);
 
     // ─── TODO: Add more aggregation / filter queries as needed ─
 }

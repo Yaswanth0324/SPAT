@@ -78,10 +78,14 @@ public class StudentServiceImpl implements StudentService {
                 totalCredits += s.getAwardedCredits();
             } else if (s.getStatus() == SubmissionStatus.REJECTED) {
                 rejectedCount++;
+                // Deduct 10%-ceiling penalty from net credits
+                totalCredits -= (int) Math.ceil(s.getSuggestedCredits() * 0.10);
             } else if (s.getStatus() == SubmissionStatus.PENDING) {
                 pendingCount++;
             }
         }
+        // Never let credits go below 0
+        totalCredits = Math.max(0, totalCredits);
 
         // Star Calculation
         int stars = 0;
@@ -211,27 +215,44 @@ public class StudentServiceImpl implements StudentService {
         String trimmedLabel = request.getAchievementType().trim();
         int points = request.getSuggestedPoints() != null ? request.getSuggestedPoints() : 15;
 
-        // Resolve or create category
-        ActivityCategory category = activityCategoryRepository.findByName(trimmedName)
-                .orElseGet(() -> activityCategoryRepository.save(
+        // Resolve or create category (case-insensitive lookup first)
+        ActivityCategory category = activityCategoryRepository.findByNameIgnoreCase(trimmedName)
+                .orElse(null);
+        if (category == null) {
+            try {
+                category = activityCategoryRepository.save(
                         ActivityCategory.builder()
                                 .name(trimmedName)
                                 .isCustom(true)
                                 .createdBy(student.getId())
                                 .isActive(true)
                                 .build()
-                ));
+                );
+            } catch (Exception e) {
+                category = activityCategoryRepository.findByNameIgnoreCase(trimmedName)
+                        .orElseThrow(() -> SaptException.badRequest("Could not create activity category: " + e.getMessage()));
+            }
+        }
 
-        // Resolve or create sub-type
-        ActivitySubType subType = activitySubTypeRepository.findByCategoryIdAndLabel(category.getId(), trimmedLabel)
-                .orElseGet(() -> activitySubTypeRepository.save(
+        // Resolve or create sub-type (case-insensitive lookup first)
+        final String catId = category.getId();
+        ActivitySubType subType = activitySubTypeRepository.findByCategoryIdAndLabelIgnoreCase(catId, trimmedLabel)
+                .orElse(null);
+        if (subType == null) {
+            try {
+                subType = activitySubTypeRepository.save(
                         ActivitySubType.builder()
-                                .categoryId(category.getId())
+                                .categoryId(catId)
                                 .label(trimmedLabel)
                                 .points(points)
                                 .isActive(true)
                                 .build()
-                ));
+                );
+            } catch (Exception e) {
+                subType = activitySubTypeRepository.findByCategoryIdAndLabelIgnoreCase(catId, trimmedLabel)
+                        .orElseThrow(() -> SaptException.badRequest("Could not create achievement sub-type: " + e.getMessage()));
+            }
+        }
 
         return StudentDto.CustomCategoryResponse.builder()
                 .categoryId(category.getId())
@@ -264,10 +285,14 @@ public class StudentServiceImpl implements StudentService {
                 totalCredits += s.getAwardedCredits();
             } else if (s.getStatus() == SubmissionStatus.REJECTED) {
                 rejectedCount++;
+                // Deduct 10%-ceiling penalty from net credits
+                totalCredits -= (int) Math.ceil(s.getSuggestedCredits() * 0.10);
             } else if (s.getStatus() == SubmissionStatus.PENDING) {
                 pendingCount++;
             }
         }
+        // Never let credits go below 0
+        totalCredits = Math.max(0, totalCredits);
 
         // Star / badge thresholds mapping
         int stars = 0;

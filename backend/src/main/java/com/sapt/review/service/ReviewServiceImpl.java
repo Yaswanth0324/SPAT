@@ -31,7 +31,7 @@ public class ReviewServiceImpl implements ReviewService {
                     .college("Madras Institute of Technology")
                     .role("Student")
                     .rating(5)
-                    .feedback("SPAT has completely transformed how I track my co-curricular accomplishments. The interface is gorgeous, and seeing my star level increase keeps me incredibly motivated!")
+                    .feedback("SAPT has completely transformed how I track my co-curricular accomplishments. The interface is gorgeous, and seeing my star level increase keeps me incredibly motivated!")
                     .createdAt(LocalDateTime.now())
                     .build(),
                 Review.builder()
@@ -49,7 +49,7 @@ public class ReviewServiceImpl implements ReviewService {
                     .college("Madras Institute of Technology")
                     .role("HOD")
                     .rating(5)
-                    .feedback("Managing student activity credits used to be an administrative nightmare of spreadsheets and lost certificates. SPAT has streamlined the entire verification process into a seamless departmental dashboard.")
+                    .feedback("Managing student activity credits used to be an administrative nightmare of spreadsheets and lost certificates. SAPT has streamlined the entire verification process into a seamless departmental dashboard.")
                     .createdAt(LocalDateTime.now())
                     .build(),
                 Review.builder()
@@ -58,7 +58,7 @@ public class ReviewServiceImpl implements ReviewService {
                     .college("Madras Institute of Technology")
                     .role("Mentor")
                     .rating(5)
-                    .feedback("As a mentor, SPAT allows me to stay connected with my students' extracurricular progress. The approval workflow is highly intuitive, allowing me to review and validate submissions in just a single click.")
+                    .feedback("As a mentor, SAPT allows me to stay connected with my students' extracurricular progress. The approval workflow is highly intuitive, allowing me to review and validate submissions in just a single click.")
                     .createdAt(LocalDateTime.now())
                     .build()
             ));

@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
  * ============================================================
  * Submission — Student Activity Point Submission Entity
  * ============================================================
- * The core domain object of the SPAT system.
+ * The core domain object of the SAPT system.
  * A student submits an activity proof; the mentor reviews it
  * and awards credits if approved.
  *
@@ -33,6 +33,11 @@ import java.time.LocalDateTime;
  *   parent_submission_id → references the original submission
  *
  * Constraint: if status = REJECTED then awarded_credits must = 0
+ *
+ * Credit Penalty (rejection):
+ *   credit_penalty stores ceil(suggestedCredits * 10%) for REJECTED submissions.
+ *   This deduction is subtracted from the student's total in the credit snapshot.
+ *   awarded_credits stays 0 (per DB constraint); credit_penalty holds the penalty.
  *
  * Table: submissions
  * ============================================================
@@ -125,6 +130,16 @@ public class Submission {
     @Column(name = "awarded_credits", nullable = false)
     @Builder.Default
     private int awardedCredits = 0;
+
+    /**
+     * Credit penalty deducted when a submission is REJECTED.
+     * Value = ceil(suggestedCredits * 10%).
+     * 0 for APPROVED or PENDING submissions.
+     * This is subtracted from the student's total_credits in the snapshot.
+     */
+    @Column(name = "credit_penalty", nullable = false)
+    @Builder.Default
+    private int creditPenalty = 0;
 
     // ─── Review ──────────────────────────────────────────────
     @Enumerated(EnumType.STRING)
