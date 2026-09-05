@@ -22,7 +22,6 @@ public class SystemAdminDto {
     public static class SystemAdminProfile {
         private String id;          // UUID
         private String fullName;
-        private String employeeId;
         private String email;
         private boolean active;
         private LocalDateTime createdAt;
@@ -55,7 +54,6 @@ public class SystemAdminDto {
         private String adminEmail;
         private String adminPassword;
         private String adminPhone;
-        private String adminEmployeeId;
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -93,7 +91,6 @@ public class SystemAdminDto {
     public static class CollegeAdminResponse {
         private String id;          // UUID
         private String fullName;
-        private String employeeId;
         private String email;
         private String phone;
         private String collegeName;

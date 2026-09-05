@@ -420,12 +420,11 @@ export const SystemAdminAddAdmin = () => {
     collegeName: '', collegeAddress: '', collegeState: '',
     collegePhone: '', collegeEmail: '', collegeWebsite: '',
     adminFullName: '', adminEmail: '', adminPassword: '',
-    adminPhone: '', adminEmployeeId: '',
+    adminPhone: '',
   });
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
-  const generateEmployeeId = () => set('adminEmployeeId', 'CA' + Math.random().toString().substring(2, 8).toUpperCase());
   const generatePassword   = () => {
     const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#';
     const pwd   = Array.from({ length: 12 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
@@ -468,7 +467,6 @@ export const SystemAdminAddAdmin = () => {
         email: form.adminEmail,
         password: form.adminPassword,
         college: form.collegeName.trim(),
-        adminId: form.adminEmployeeId || 'CA' + Math.random().toString().substring(2, 8).toUpperCase(),
         phone: form.adminPhone,
         status: 'approved',
         is_active: true,
@@ -491,7 +489,7 @@ export const SystemAdminAddAdmin = () => {
         collegeName: '', collegeAddress: '', collegeState: '',
         collegePhone: '', collegeEmail: '', collegeWebsite: '',
         adminFullName: '', adminEmail: '', adminPassword: '',
-        adminPhone: '', adminEmployeeId: '',
+        adminPhone: '',
       });
       setShowPassword(false);
     } catch (err) {
@@ -596,14 +594,6 @@ export const SystemAdminAddAdmin = () => {
                   {showPassword ? 'Hide' : 'Show'}
                 </button>
                 <button type="button" onClick={generatePassword} className="btn-secondary text-xs shrink-0">Auto-Generate</button>
-              </div>
-            </div>
-            <div>
-              <label className="label-field">Employee ID</label>
-              <div className="flex gap-2">
-                <input className="input-field" placeholder="e.g. CA123456"
-                  value={form.adminEmployeeId} onChange={e => set('adminEmployeeId', e.target.value)} />
-                <button type="button" onClick={generateEmployeeId} className="btn-secondary shrink-0 text-xs">Generate</button>
               </div>
             </div>
           </Section>

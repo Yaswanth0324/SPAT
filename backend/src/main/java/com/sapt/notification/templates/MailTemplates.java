@@ -348,7 +348,7 @@ public final class MailTemplates {
      * Builds an HTML welcome email for newly created College Admins.
      */
     public static String buildCollegeAdminWelcomeEmail(
-            String fullName, String email, String password, String employeeId, String verifyLink) {
+            String fullName, String email, String password, String verifyLink) {
         return "<html><body style='font-family: \"Segoe UI\", Tahoma, Geneva, Verdana, sans-serif; background-color: #fafafa; margin: 0; padding: 20px; color: #333333;'>"
             + "<div style='max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 16px; border: 1px solid #fed7aa; overflow: hidden; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);'>"
             + "<div style='background: linear-gradient(135deg, #ea580c 0%, #f97316 100%); padding: 30px; text-align: center; color: #ffffff;'>"
@@ -364,7 +364,6 @@ public final class MailTemplates {
             + "<table style='width: 100%; border-collapse: collapse;'>"
             + "<tr><td style='padding: 6px 0; font-weight: 600; color: #9a3412; width: 120px;'>Official Email:</td><td style='padding: 6px 0; font-family: monospace; font-size: 14px;'>" + email + "</td></tr>"
             + "<tr><td style='padding: 6px 0; font-weight: 600; color: #9a3412;'>Password:</td><td style='padding: 6px 0; font-family: monospace; font-size: 14px; font-weight: bold; color: #ea580c;'>" + password + "</td></tr>"
-            + "<tr><td style='padding: 6px 0; font-weight: 600; color: #9a3412;'>Employee ID:</td><td style='padding: 6px 0; font-family: monospace; font-size: 14px;'>" + (employeeId != null && !employeeId.isEmpty() ? employeeId : "Not Assigned") + "</td></tr>"
             + "<tr><td style='padding: 6px 0; font-weight: 600; color: #9a3412;'>Access Role:</td><td style='padding: 6px 0; font-weight: 600; color: #475569;'>COLLEGE_ADMIN</td></tr>"
             + "</table>"
             + "</div>"

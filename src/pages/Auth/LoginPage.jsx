@@ -13,7 +13,7 @@ export const AdminLoginPage = () => {
   const location = useLocation();
   const { login } = useAuth();
   const { showToast, ToastComponent } = useToast();
-  const [form, setForm] = useState({ email: '', password: '', adminId: '' });
+  const [form, setForm] = useState({ email: '', password: '' });
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -40,11 +40,6 @@ export const AdminLoginPage = () => {
         } catch (err2) {
           throw new Error(err2.message || 'Invalid credentials');
         }
-      }
-
-      // Verify adminId matches (if the user has one set)
-      if (res.adminId && form.adminId.trim().toUpperCase() !== res.adminId.toUpperCase()) {
-        throw new Error('Admin ID does not match');
       }
 
       login(res);
@@ -79,10 +74,6 @@ export const AdminLoginPage = () => {
           <div>
             <label className="label-field">Admin Email</label>
             <input type="email" className="input-field" placeholder="admin@sapt.edu" value={form.email} onChange={e => setForm({...form, email: e.target.value})} required />
-          </div>
-          <div>
-            <label className="label-field">Admin ID</label>
-            <input type="text" className="input-field" placeholder="SA001" value={form.adminId} onChange={e => setForm({...form, adminId: e.target.value})} required />
           </div>
           <div>
             <label className="label-field">Password</label>

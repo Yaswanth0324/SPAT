@@ -121,7 +121,6 @@ export const AuthProvider = ({ children }) => {
       // college — LoginResponse has `college`; User entity exposes getCollege() → collegeName
       college:        userData.college     || userData.collegeName,
       collegeName:    userData.collegeName || userData.college,
-      adminId:        userData.adminId,
       collegeId:      userData.collegeId,
       // department — LoginResponse has `department`; User entity exposes getDepartment() → departmentName
       department:     userData.department     || userData.departmentName,

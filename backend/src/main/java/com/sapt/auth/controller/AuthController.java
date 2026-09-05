@@ -180,7 +180,6 @@ public class AuthController {
         userMap.put("mentorId", updated.getMentorId());
         userMap.put("mentorName", updated.getMentorName());
         userMap.put("hodId", updated.getHodId());
-        userMap.put("adminId", updated.getAdminId());
         userMap.put("position", updated.getPosition());
         userMap.put("rollNo", updated.getRollNo());
         userMap.put("token", token);

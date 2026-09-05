@@ -56,7 +56,6 @@ public class MentorServiceImpl implements MentorService {
                 .id(mentor.getId())
                 .name(mentor.getName())
                 .email(mentor.getEmail())
-                .adminId(mentor.getAdminId())
                 .phone(mentor.getPhone())
                 .position(mentor.getPosition())
                 .collegeId(mentor.getCollegeId())

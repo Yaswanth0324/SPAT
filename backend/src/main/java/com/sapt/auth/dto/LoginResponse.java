@@ -102,9 +102,6 @@ public class LoginResponse {
     /** Student roll/register number — STUDENT role only */
     private String rollNo;
 
-    /** Employee/Admin ID — COLLEGE_ADMIN, HOD, MENTOR roles */
-    private String adminId;
-
     /** Account registration timestamp */
     private java.time.LocalDateTime createdAt;
 

@@ -40,7 +40,6 @@ public class CollegeAdminDto {
         private String phone;
         private String position;
         private String avatarUrl;
-        private String adminId;
         private String collegeId;
         private String collegeName;
         /** Address of the college (from the colleges table) */
@@ -264,7 +263,6 @@ public class CollegeAdminDto {
         private String phone;
         private String position;
         private String avatarUrl;
-        private String adminId;
         private String rollNo;
         private UserRole role;
         private UserStatus status;

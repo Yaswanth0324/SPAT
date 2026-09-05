@@ -176,7 +176,6 @@ public class HodDto {
         private String phone;
         private String position;
         private String avatarUrl;
-        private String adminId;
         private String rollNo;
         private UserRole role;
         private UserStatus status;
@@ -215,7 +214,6 @@ public class HodDto {
         private String phone;
         private String position;
         private String avatarUrl;
-        private String adminId;
         private UserRole role;
         private UserStatus status;
         private String collegeId;

@@ -22,8 +22,8 @@ import java.time.LocalDateTime;
  * Role-specific fields are nullable and only populated
  * when relevant to the user's role:
  *
- *   SYSTEM_ADMIN  → only core fields (name, email, adminId)
- *   COLLEGE_ADMIN → collegeId, adminId
+ *   SYSTEM_ADMIN  → only core fields (name, email)
+ *   COLLEGE_ADMIN → collegeId
  *   HOD           → collegeId, departmentId, hodId (if dept has HOD above)
  *   MENTOR        → collegeId, departmentId, hodId
  *   STUDENT       → collegeId, departmentId, rollNo, mentorId, mentorName
@@ -78,13 +78,6 @@ public class User {
     private String passwordHash;
 
     // ─── Common Profile Fields ────────────────────────────────
-    /**
-     * Employee ID for staff roles (COLLEGE_ADMIN, HOD, MENTOR).
-     * Admin reference number for SYSTEM_ADMIN.
-     */
-    @Column(name = "admin_id", length = 50)
-    private String adminId;
-
     @Column(name = "avatar_url", columnDefinition = "LONGTEXT")
     private String avatarUrl;
 

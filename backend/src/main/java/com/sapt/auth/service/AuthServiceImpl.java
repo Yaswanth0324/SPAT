@@ -148,7 +148,6 @@ public class AuthServiceImpl implements AuthService {
                 .mentorName(user.getMentorName())
                 .hodId(user.getHodId())
                 .rollNo(user.getRollNo())
-                .adminId(user.getAdminId())
                 .createdAt(user.getCreatedAt())
                 .build();
 

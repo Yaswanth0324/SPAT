@@ -20,7 +20,6 @@ public class MentorDto {
         private String id;
         private String name;
         private String email;
-        private String adminId;
         private String phone;
         private String position;
         private String collegeId;

@@ -102,17 +102,30 @@ public class HodServiceImpl implements HodService {
         List<HodDto.SkillTrendEntry> skillTrend = buildMonthlyTrend(approved);
 
         // ── 6. Student performance (credits, stars, badge, factors) ──────
-        Map<String, Integer> creditByStudent = approved.stream()
-                .collect(Collectors.groupingBy(Submission::getStudentId,
-                         Collectors.summingInt(Submission::getAwardedCredits)));
-
         List<HodDto.StudentPerformance> studentPerformances = students.stream()
                 .map(s -> {
-                    List<Submission> sSubs = approved.stream()
+                    List<Submission> sAllSubs = allSubs.stream()
                             .filter(sub -> sub.getStudentId().equals(s.getId()))
                             .collect(Collectors.toList());
-                    int credits = creditByStudent.getOrDefault(s.getId(), 0);
-                    int stars   = computeStars(credits);
+
+                    List<Submission> sApprovedSubs = sAllSubs.stream()
+                            .filter(sub -> sub.getStatus() == SubmissionStatus.APPROVED)
+                            .collect(Collectors.toList());
+
+                    int approvedCredits = sApprovedSubs.stream()
+                            .mapToInt(Submission::getAwardedCredits)
+                            .sum();
+
+                    int totalPenalty = sAllSubs.stream()
+                            .filter(sub -> sub.getStatus() == SubmissionStatus.REJECTED)
+                            .mapToInt(sub -> sub.getCreditPenalty() > 0 
+                                    ? sub.getCreditPenalty() 
+                                    : (int) Math.ceil(sub.getSuggestedCredits() * 0.10))
+                            .sum();
+
+                    int netCredits = Math.max(0, approvedCredits - totalPenalty);
+                    int stars = computeStars(netCredits);
+
                     return HodDto.StudentPerformance.builder()
                             .id(s.getId())
                             .name(s.getName())
@@ -120,11 +133,11 @@ public class HodServiceImpl implements HodService {
                             .avatarUrl(s.getAvatarUrl())
                             .rollNo(s.getRollNo())
                             .department(s.getDepartmentName())
-                            .credits(credits)
-                            .activitiesCount(sSubs.size())
+                            .credits(netCredits)
+                            .activitiesCount(sApprovedSubs.size())
                             .starsCount(stars)
                             .badge(computeBadge(stars))
-                            .factors(buildFactors(sSubs))
+                            .factors(buildFactors(sApprovedSubs))
                             .build();
                 })
                 .sorted(Comparator.comparingInt(HodDto.StudentPerformance::getCredits).reversed())
@@ -416,7 +429,6 @@ public class HodServiceImpl implements HodService {
                 .phone(u.getPhone())
                 .position(u.getPosition())
                 .avatarUrl(u.getAvatarUrl())
-                .adminId(u.getAdminId())
                 .role(u.getRole())
                 .status(u.getStatus())
                 .collegeId(u.getCollegeId())
@@ -436,7 +448,6 @@ public class HodServiceImpl implements HodService {
                 .phone(u.getPhone())
                 .position(u.getPosition())
                 .avatarUrl(u.getAvatarUrl())
-                .adminId(u.getAdminId())
                 .rollNo(u.getRollNo())
                 .role(u.getRole())
                 .status(u.getStatus())

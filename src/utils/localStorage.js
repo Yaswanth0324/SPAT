@@ -80,16 +80,14 @@ export const login = (email, password, role) => {
 };
 
 
-export const adminLogin = (email, password, adminId) => {
+export const adminLogin = (email, password) => {
   const e = email.trim().toLowerCase();
   const p = password;
-  const a = adminId.trim().toUpperCase();
 
   const users = getUsers();
   const user = users.find(u =>
     u.email?.toLowerCase() === e &&
-    u.password === p &&
-    u.adminId?.toUpperCase() === a
+    u.password === p
   );
   if (user) {
     setCurrentUser(user);
@@ -239,9 +237,6 @@ export const addCustomCategory = (name, achievementType, points) => {
 // ---- HELPERS ----
 export const generateId = (prefix = 'id') =>
   `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-export const generateAdminId = () =>
-  'CA' + Math.random().toString().substr(2, 6).toUpperCase();
 
 export const simulateOTP = () => {
   const otp = Math.floor(100000 + Math.random() * 900000).toString();

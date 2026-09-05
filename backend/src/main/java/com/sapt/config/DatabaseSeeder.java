@@ -68,6 +68,14 @@ public class DatabaseSeeder implements CommandLineRunner {
             log.debug("DatabaseSeeder: email_verified column skipped or not present: {}", e.getMessage());
         }
 
+        // Cleanup: clear admin_id from database table users if present
+        try {
+            jdbcTemplate.execute("UPDATE users SET admin_id = NULL WHERE admin_id IS NOT NULL");
+            log.info("DatabaseSeeder: Cleared admin_id values from users table.");
+        } catch (Exception e) {
+            log.debug("DatabaseSeeder: admin_id cleanup skipped: {}", e.getMessage());
+        }
+
         // Step 0: Migrate any existing auth_users data → users table, then drop auth_users
         migrateFromAuthUsersIfExists();
 
@@ -100,7 +108,6 @@ public class DatabaseSeeder implements CommandLineRunner {
                     .name("System Administrator")
                     .email(adminEmail)
                     .passwordHash(passwordEncoder.encode("spark@2403"))
-                    .adminId("SYS-001")
                     .phone("9000000001")
                     .position("System Administrator")
                     .status(UserStatus.APPROVED)
@@ -127,7 +134,6 @@ public class DatabaseSeeder implements CommandLineRunner {
                     .name("College Administrator")
                     .email(caEmail)
                     .passwordHash(passwordEncoder.encode("collegeAdmin@2403"))
-                    .adminId("CA-001")
                     .phone("9000000002")
                     .position("College Administrator")
                     .collegeId(college.getId())
@@ -620,7 +626,6 @@ public class DatabaseSeeder implements CommandLineRunner {
                         .name(row.get("ca_full_name") != null ? (String) row.get("ca_full_name") : email.split("@")[0])
                         .email(email)
                         .passwordHash((String) row.get("au_password"))  // already BCrypt hashed
-                        .adminId(row.get("ca_employee_id") != null ? (String) row.get("ca_employee_id") : null)
                         .phone(row.get("ca_phone") != null ? (String) row.get("ca_phone") : null)
                         .position(role == UserRole.COLLEGE_ADMIN ? "College Administrator" : role.name())
                         .collegeId(collegeId)

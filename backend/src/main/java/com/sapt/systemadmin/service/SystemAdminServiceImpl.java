@@ -60,7 +60,6 @@ public class SystemAdminServiceImpl implements SystemAdminService {
         return SystemAdminDto.SystemAdminProfile.builder()
                 .id(user.getId())
                 .fullName(user.getName())
-                .employeeId(user.getAdminId())
                 .email(user.getEmail())
                 .active(user.isActive())
                 .createdAt(user.getCreatedAt())
@@ -84,7 +83,6 @@ public class SystemAdminServiceImpl implements SystemAdminService {
         return SystemAdminDto.SystemAdminProfile.builder()
                 .id(saved.getId())
                 .fullName(saved.getName())
-                .employeeId(saved.getAdminId())
                 .email(saved.getEmail())
                 .active(saved.isActive())
                 .createdAt(saved.getCreatedAt())
@@ -129,7 +127,6 @@ public class SystemAdminServiceImpl implements SystemAdminService {
                 .name(req.getAdminFullName())
                 .email(req.getAdminEmail().trim().toLowerCase())
                 .passwordHash(passwordEncoder.encode(req.getAdminPassword()))
-                .adminId(req.getAdminEmployeeId())
                 .phone(req.getAdminPhone())
                 .position("College Administrator")
                 .collegeId(college.getId())
@@ -148,7 +145,6 @@ public class SystemAdminServiceImpl implements SystemAdminService {
                     req.getAdminFullName(),
                     req.getAdminEmail().trim(),
                     req.getAdminPassword(),
-                    req.getAdminEmployeeId(),
                     verifyLink
             );
             mailService.sendHtmlMail(req.getAdminEmail().trim(),
@@ -259,7 +255,6 @@ public class SystemAdminServiceImpl implements SystemAdminService {
                 .map(u -> SystemAdminDto.CollegeAdminResponse.builder()
                         .id(u.getId())
                         .fullName(u.getName())
-                        .employeeId(u.getAdminId())
                         .email(u.getEmail())
                         .phone(u.getPhone())
                         .collegeName(u.getCollegeName())

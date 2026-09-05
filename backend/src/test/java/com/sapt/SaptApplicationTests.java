@@ -103,7 +103,6 @@ class SaptApplicationTests {
         request.setAdminEmail(testEmail);
         request.setAdminPassword("secretPassword");
         request.setAdminPhone("9876543211");
-        request.setAdminEmployeeId("VCA-001");
 
         // 2. Execute creation — pass a dummy UUID as the "created by" system admin id
         systemAdminService.createCollegeAdmin(request, java.util.UUID.randomUUID().toString());

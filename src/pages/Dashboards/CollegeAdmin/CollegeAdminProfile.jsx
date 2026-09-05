@@ -195,7 +195,7 @@ export const CollegeAdminProfile = () => {
             <h2 className="font-display text-xl font-bold text-slate-900 dark:text-white mt-4">{adminForm.name || user?.name}</h2>
             <Badge variant="purple">College Administrator</Badge>
             <p className="text-xs text-slate-400 dark:text-slate-500 mt-2 font-medium">
-              Institutional ID: {user?.adminId || user?.id}
+              ID: {user?.id}
             </p>
 
             <div className="border-t border-slate-100 dark:border-slate-800/40 my-4 pt-4 text-left">
