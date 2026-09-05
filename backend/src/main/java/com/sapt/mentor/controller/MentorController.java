@@ -89,9 +89,13 @@ public class MentorController {
         }
         reviewRequest.setStatus(com.sapt.common.enums.SubmissionStatus.APPROVED);
 
-        if (reviewRequest.getCredits() == null) {
-            SubmissionDto.SubmissionResponse sub = submissionService.getSubmissionById(id);
+        SubmissionDto.SubmissionResponse sub = submissionService.getSubmissionById(id);
+        boolean isCustom = sub.isCustomCategory() || (sub.getSuggestedCredits() != null && sub.getSuggestedCredits() == 0);
+        if (!isCustom && sub.getSuggestedCredits() != null) {
+            // For predefined categories, mentor cannot override credits - enforce predefined value from database
             reviewRequest.setCredits(sub.getSuggestedCredits());
+        } else if (reviewRequest.getCredits() == null) {
+            reviewRequest.setCredits(sub.getSuggestedCredits() != null ? sub.getSuggestedCredits() : 0);
         }
 
         submissionService.reviewSubmission(mentorId, id, reviewRequest);

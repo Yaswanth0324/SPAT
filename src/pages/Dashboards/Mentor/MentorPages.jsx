@@ -426,12 +426,14 @@ export const MentorSubmissions = () => {
   const handleReview = async () => {
     try {
       const isCustom = isCustomSub(reviewModal);
-      let credits = Number(awardCreditsInput);
-      if (isNaN(credits) || awardCreditsInput === '' || credits <= 0) {
-        if (isCustom) {
+      let credits;
+      if (isCustom) {
+        credits = Number(awardCreditsInput);
+        if (isNaN(credits) || awardCreditsInput === '' || credits <= 0) {
           showToast('Please enter valid credits to award for custom category submission', 'warning');
           return;
         }
+      } else {
         credits = reviewModal?.suggestedCredits || 0;
       }
       await mentorApi.approveSubmission(reviewModal.id, review.text, credits);
@@ -489,7 +491,7 @@ export const MentorSubmissions = () => {
                 <tr key={s.id} className="hover:bg-slate-50 dark:hover:bg-dark-700 transition-colors">
                   <td className="table-td font-medium max-w-xs truncate">{s.title}</td>
                   <td className="table-td"><Badge variant="blue">{s.type}</Badge></td>
-                  <td className="table-td text-xs text-slate-500 dark:text-slate-400">{s.achievementType || 'â€“'}</td>
+                  <td className="table-td text-xs text-slate-500 dark:text-slate-400">{s.achievementType || '–'}</td>
                   <td className="table-td">{s.studentName}</td>
                   <td className="table-td text-slate-400 text-xs">{s.date}</td>
                   <td className="table-td">
@@ -498,10 +500,10 @@ export const MentorSubmissions = () => {
                         onClick={() => setSelectedDocs(s)}
                         className="inline-flex items-center gap-1 text-xs text-primary-600 hover:text-primary-700 font-bold"
                       >
-                        ðŸ“„ View Docs
+                        📄 View Docs
                       </button>
                     ) : (
-                      <span className="text-xs text-slate-400">â€“</span>
+                      <span className="text-xs text-slate-400">–</span>
                     )}
                   </td>
                   <td className="table-td"><Badge variant={statusColor[s.status]}>{s.status}</Badge></td>
@@ -558,21 +560,10 @@ export const MentorSubmissions = () => {
                 </div>
               ) : (
                 <div className="mt-3 p-3 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-xl flex items-center justify-between gap-3">
-                  <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300">
-                    ✅ Default Credits on Approval: {reviewModal.suggestedCredits || 0} pts
+                  <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
+                    <span>✅</span> Fixed Credits on Approval: {reviewModal.suggestedCredits || 0} pts
                   </span>
-                  <div className="flex items-center gap-1.5">
-                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Credits to Award:</label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="100"
-                      className="input-field py-0.5 px-2 text-xs font-bold w-20 text-center"
-                      value={awardCreditsInput}
-                      onChange={e => setAwardCreditsInput(e.target.value)}
-                    />
-                    <span className="text-xs text-slate-500 font-medium">pts</span>
-                  </div>
+                  <Badge variant="green">Predefined Category</Badge>
                 </div>
               )}
               {/* Uploaded files listing */}
