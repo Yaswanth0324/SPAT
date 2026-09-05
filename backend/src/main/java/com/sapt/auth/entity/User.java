@@ -78,7 +78,7 @@ public class User {
     private String passwordHash;
 
     // ─── Common Profile Fields ────────────────────────────────
-    @Column(name = "avatar_url", columnDefinition = "LONGTEXT")
+    @Column(name = "avatar_url", columnDefinition = "TEXT")
     private String avatarUrl;
 
     @Column(length = 20)
@@ -92,7 +92,7 @@ public class User {
     private String position;
 
     /** ID card / profile card image URL */
-    @Column(name = "id_card_url", columnDefinition = "LONGTEXT")
+    @Column(name = "id_card_url", columnDefinition = "TEXT")
     private String idCardUrl;
 
     // ─── College Reference ────────────────────────────────────

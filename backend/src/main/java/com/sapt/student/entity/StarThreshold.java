@@ -37,14 +37,13 @@ public class StarThreshold {
      * NOT auto-generated — pre-seeded by DataInitializer.
      */
     @Id
-    @Column(columnDefinition = "TINYINT UNSIGNED")
     private Integer id;
 
     /**
      * Star level (1-5). Unique column.
      * 0-star students (below min threshold) are "Beginner".
      */
-    @Column(nullable = false, unique = true, columnDefinition = "TINYINT UNSIGNED")
+    @Column(nullable = false, unique = true)
     private Integer stars;
 
     /**
